@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'signup.dart'; // Import halaman Sign Up
+import 'signup.dart'; // Halaman Sign Up
+import 'lupa_password.dart'; // Halaman Lupa Password
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -108,7 +109,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
                   ),
                   TextButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      // Navigasi ke Halaman Lupa Password
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()),
+                      );
+                    },
                     child: const Text(
                       'Lupa Password?',
                       style: TextStyle(color: Colors.black54, fontSize: 14),
