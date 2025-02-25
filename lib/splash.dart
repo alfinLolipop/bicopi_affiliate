@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'penghasilan_tambahan.dart'; // Impor file penghasilan_tambahan.dart
+import 'fleksibel_praktis.dart'; // Impor file penghasilan_tambahan.dart
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -17,7 +17,7 @@ class _SplashScreenState extends State<SplashScreen> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => const PenghasilanTambahanScreen(), // Langsung ke PenghasilanTambahanScreen
+            builder: (context) => const FleksibelPraktisScreen(), // Langsung ke PenghasilanTambahanScreen
           ),
         );
       }

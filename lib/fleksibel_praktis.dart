@@ -1,22 +1,23 @@
 import 'package:flutter/material.dart';
 import 'reward_bonus.dart'; // Pastikan file ini ada di project Anda
+import 'penghasilan_tambahan.dart'; // Pastikan file ini ada
 
 class FleksibelPraktisScreen extends StatelessWidget {
   const FleksibelPraktisScreen({super.key});
 
-   @override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // Latar belakang putih sesuai desain
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Expanded(child: SizedBox()),
 
-             //Gambar utama
+            // Gambar utama
             Image.asset(
-              'assets/fleksibel_praktis.png', // Pastikan path gambar benar
+              'assets/fleksibel_praktis.png',
               width: 116,
             ),
 
@@ -26,8 +27,8 @@ class FleksibelPraktisScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _buildIndicator(isActive: false),
                 _buildIndicator(isActive: true),
+                _buildIndicator(isActive: false),
                 _buildIndicator(isActive: false),
               ],
             ),
@@ -70,7 +71,7 @@ class FleksibelPraktisScreen extends StatelessWidget {
                       builder: (context) => const RewardBonusScreen()),
                 );
               },
-              borderRadius: BorderRadius.circular(30), // Efek klik lebih halus
+              borderRadius: BorderRadius.circular(30),
               child: Column(
                 children: [
                   Container(

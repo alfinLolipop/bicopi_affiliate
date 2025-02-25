@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'splash.dart';
-import 'penghasilan_tambahan.dart';
 import 'fleksibel_praktis.dart';
 import 'reward_bonus.dart';
+import 'penghasilan_tambahan.dart';
 
 void main() {
   runApp(const MyApp());

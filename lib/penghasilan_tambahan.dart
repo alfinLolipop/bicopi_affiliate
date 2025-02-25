@@ -1,5 +1,6 @@
+import 'package:bicopi_affiliate/login.dart';
 import 'package:flutter/material.dart';
-import 'fleksibel_praktis.dart'; // Pastikan file ini ada di project Anda
+import 'login.dart';
 
 class PenghasilanTambahanScreen extends StatelessWidget {
   const PenghasilanTambahanScreen({super.key});
@@ -7,7 +8,7 @@ class PenghasilanTambahanScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // Latar belakang putih sesuai desain
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -16,7 +17,7 @@ class PenghasilanTambahanScreen extends StatelessWidget {
 
             // Gambar utama
             Image.asset(
-              'assets/penghasilan_tambahan.png', // Pastikan path gambar benar
+              'assets/penghasilan_tambahan.png',
               width: 250,
             ),
 
@@ -26,9 +27,9 @@ class PenghasilanTambahanScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                _buildIndicator(isActive: false),
+                _buildIndicator(isActive: false),
                 _buildIndicator(isActive: true),
-                _buildIndicator(isActive: false),
-                _buildIndicator(isActive: false),
               ],
             ),
 
@@ -67,10 +68,10 @@ class PenghasilanTambahanScreen extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (context) => const FleksibelPraktisScreen()),
+                      builder: (context) => const LoginScreen()),
                 );
               },
-              borderRadius: BorderRadius.circular(30), // Efek klik lebih halus
+              borderRadius: BorderRadius.circular(30),
               child: Column(
                 children: [
                   Container(

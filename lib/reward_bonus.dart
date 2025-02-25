@@ -1,22 +1,23 @@
 import 'package:flutter/material.dart';
+import 'penghasilan_tambahan.dart'; // Pastikan file ini ada di project Anda
 
 class RewardBonusScreen extends StatelessWidget {
   const RewardBonusScreen({super.key});
 
- @override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // Latar belakang putih sesuai desain
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Expanded(child: SizedBox()),
 
-             //Gambar utama
+            // Gambar utama
             Image.asset(
-              'assets/reward.jpeg', // Pastikan path gambar benar
-              width: 145,
+              'assets/reward.jpeg',
+              width: 147,
             ),
 
             const SizedBox(height: 20),
@@ -26,8 +27,8 @@ class RewardBonusScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 _buildIndicator(isActive: false),
-                _buildIndicator(isActive: false),
                 _buildIndicator(isActive: true),
+                _buildIndicator(isActive: false),
               ],
             ),
 
@@ -49,7 +50,7 @@ class RewardBonusScreen extends StatelessWidget {
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 30),
               child: Text(
-                'Dapatkan bonus esklusif & reward \nmenarik dari bicopi! \nMakin aktif, makin banyak keuntungan!.',
+                'Dapatkan bonus eksklusif & reward \nmenarik dari bicopi! \nMakin aktif, makin banyak keuntungan!.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 16,
@@ -66,10 +67,10 @@ class RewardBonusScreen extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (context) => const RewardBonusScreen()),
+                      builder: (context) => const PenghasilanTambahanScreen()),
                 );
               },
-              borderRadius: BorderRadius.circular(30), // Efek klik lebih halus
+              borderRadius: BorderRadius.circular(30),
               child: Column(
                 children: [
                   Container(
