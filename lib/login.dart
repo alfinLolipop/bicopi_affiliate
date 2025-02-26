@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'signup.dart'; // Halaman Sign Up
 import 'lupa_password.dart'; // Halaman Lupa Password
+import 'home.dart'; // Halaman Home
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,6 +13,26 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   bool rememberMe = false;
   bool obscurePassword = true;
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  void _login() {
+    String email = _emailController.text.trim();
+    String password = _passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Email dan password harus diisi")),
+      );
+      return;
+    }
+
+    // Jika email & password terisi, pindah ke HomeScreen
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const DashboardScreen()),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,6 +73,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
               // Email Input
               TextField(
+                controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
                   prefixIcon: const Icon(Icons.email, color: Colors.black54),
@@ -65,6 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
               // Password Input
               TextField(
+                controller: _passwordController,
                 obscureText: obscurePassword,
                 decoration: InputDecoration(
                   prefixIcon: const Icon(Icons.vpn_key, color: Colors.black54),
@@ -110,7 +133,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   TextButton(
                     onPressed: () {
-                      // Navigasi ke Halaman Lupa Password
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()),
@@ -129,7 +151,7 @@ class _LoginScreenState extends State<LoginScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {},
+                  onPressed: _login,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
                     shape: RoundedRectangleBorder(

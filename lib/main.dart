@@ -3,6 +3,10 @@ import 'splash.dart';
 import 'fleksibel_praktis.dart';
 import 'reward_bonus.dart';
 import 'penghasilan_tambahan.dart';
+import 'login.dart';
+import 'signup.dart';
+import 'verifikasi_email.dart';
+import 'lupa_password.dart';
 
 void main() {
   runApp(const MyApp());
