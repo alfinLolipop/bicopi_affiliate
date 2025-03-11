@@ -1,12 +1,8 @@
-import 'package:bicopi_affiliate/menu.dart';
 import 'package:bicopi_affiliate/profil.dart';
-import 'package:bicopi_affiliate/total_saldo.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
-import 'total_pendapatan.dart';
 import 'notifikasi.dart';
-import 'total_saldo.dart';
 import 'profil.dart';
 
 void main() {
