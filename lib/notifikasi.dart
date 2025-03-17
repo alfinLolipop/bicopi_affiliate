@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'home.dart';
+import 'points.dart';
+import 'profil.dart';
 
 void main() {
-  runApp(NotificationApp());
+  runApp(MyApp());
 }
 
-class NotificationApp extends StatelessWidget {
+class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -14,114 +18,189 @@ class NotificationApp extends StatelessWidget {
   }
 }
 
-class NotificationScreen extends StatelessWidget {
-  final List<Map<String, String>> todayNotifications = [
-    {'title': 'Imbalan Komisi', 'message': 'Anda menerima komisi Rp. 5000 dari pesanan #123', 'time': '2 jam yang lalu', 'icon': 'money'},
-    {'title': 'Hadiah Baru Tersedia', 'message': 'Anda telah membuka hadiah baru, klaim sekarang!', 'time': '5 jam yang lalu', 'icon': 'gift'},
-  ];
+class NotificationScreen extends StatefulWidget {
+  const NotificationScreen({super.key});
 
-  final List<Map<String, String>> yesterdayNotifications = [
-    {'title': 'Referral Baru', 'message': 'John Doe bergabung menggunakan link referral anda', 'time': 'kemarin jam 02.30 siang', 'icon': 'person'},
-    {'title': 'Pembaruan Kinerja', 'message': 'Penjualan Anda meningkat sebesar 15% minggu ini', 'time': 'kemarin jam 10.00 pagi', 'icon': 'chart'},
-  ];
+  @override
+  _NotificationScreenState createState() => _NotificationScreenState();
+}
+
+class _NotificationScreenState extends State<NotificationScreen> {
+  int _currentIndex = 2;
+  // Tambahkan deklarasi
+
+  void _onTabTapped(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: Size.fromHeight(kToolbarHeight + 2), // Ukuran lebih besar untuk garis hijau
-        child: Column(
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        title: Text(
+          'Notifikasi',
+          style: GoogleFonts.poppins(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Colors.black,
+          ),
+        ),
+        centerTitle: true,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(2.0),
+          child: Container(
+            color: Colors.green,
+            height: 2.0,
+          ),
+        ),
+      ),
+      body: Container(
+        color: const Color.fromARGB(
+            255, 244, 244, 244), // Latar belakang abu-abu muda
+        child: ListView(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           children: [
-            AppBar(
-              leading: IconButton(
-                icon: Icon(Icons.arrow_back, color: Colors.black),
-                onPressed: () {},
-              ),
-              title: Text('Notifikasi', style: TextStyle(color: Colors.black)),
-              backgroundColor: Colors.white,
-              elevation: 0, // Hapus shadow default
-            ),
-            Container(
-              height: 2, // Garis hijau
-              color: Colors.green,
-            ),
+            sectionTitle('Hari ini'),
+            notificationCard(
+                'Imbalan Komisi',
+                'Anda menerima komisi Rp. 5000 dari pesanan #123',
+                'assets/icons/money.png',
+                '2 jam yang lalu'),
+            notificationCard(
+                'Hadiah Baru Tersedia',
+                'Anda telah membuka hadiah baru, klaim sekarang!',
+                'assets/icons/gift.png',
+                '5 jam yang lalu'),
+            const SizedBox(height: 16),
+            sectionTitle('Kemarin'),
+            notificationCard(
+                'Referral Baru',
+                'John Doe bergabung menggunakan link referral anda',
+                'assets/icons/referral.png',
+                'kemarin jam 02.30 siang'),
+            notificationCard(
+                'Pembaharuan Kinerja',
+                'Penjualan Anda meningkat sebesar 15% minggu ini',
+                'assets/icons/performance.png',
+                'kemarin jam 10.00 pagi'),
           ],
         ),
       ),
-      body: ListView(
-        padding: EdgeInsets.all(16.0),
-        children: [
-          buildSectionTitle('Hari ini'),
-          ...todayNotifications.map((notif) => buildNotificationCard(notif)).toList(),
-          SizedBox(height: 16),
-          buildSectionTitle('Kemarin'),
-          ...yesterdayNotifications.map((notif) => buildNotificationCard(notif)).toList(),
-        ],
-      ),
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 2, // Indeks notifikasi aktif
+        type: BottomNavigationBarType.fixed,
         selectedItemColor: Colors.green,
         unselectedItemColor: Colors.grey,
-        showUnselectedLabels: true,
+        currentIndex: _currentIndex,
+        onTap: (index) {
+          if (index != _currentIndex) {
+            // Hanya navigasi jika halaman berbeda
+            setState(() {
+              _currentIndex = index;
+            });
+
+            Widget nextScreen;
+            if (index == 0) {
+              nextScreen = const HomeScreen();
+            } else if (index == 1) {
+              nextScreen = const PointsScreen();
+            } else if (index == 3) {
+              nextScreen = const ProfileScreen();
+            } else {
+              return; // Jika di Home, jangan lakukan navigasi
+            }
+
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => nextScreen),
+            );
+          }
+        },
         items: [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.star), label: 'Points'),
-          BottomNavigationBarItem(icon: Icon(Icons.notifications), label: 'Notifikasi'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.notifications), label: 'Notifikasi'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
     );
   }
+}
 
-  Widget buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey.shade700)),
-    );
-  }
-
-  Widget buildNotificationCard(Map<String, String> notif) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 8),
-      padding: EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade200,
-        borderRadius: BorderRadius.circular(8),
+Widget sectionTitle(String title) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 8),
+    child: Text(
+      title,
+      style: GoogleFonts.poppins(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        color: Colors.black54,
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(getIcon(notif['icon']!), size: 24, color: Colors.black54),
-          SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(notif['title']!, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                SizedBox(height: 4),
-                Text(notif['message']!, style: TextStyle(fontSize: 14)),
-                SizedBox(height: 4),
-                Text(notif['time']!, style: TextStyle(fontSize: 12, color: Colors.grey)),
-              ],
-            ),
+    ),
+  );
+}
+
+Widget notificationCard(
+    String title, String subtitle, String iconPath, String time) {
+  return Container(
+    margin: const EdgeInsets.symmetric(vertical: 6),
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: Colors.white, // Kotak putih di dalamnya
+      borderRadius: BorderRadius.circular(12),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black12,
+          blurRadius: 4,
+          offset: Offset(0, 2),
+        ),
+      ],
+    ),
+    child: Row(
+      children: [
+        CircleAvatar(
+          radius: 24,
+          backgroundColor: Colors.grey[200],
+          child: Image.asset(iconPath, width: 24, height: 24),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black,
+                ),
+              ),
+              Text(
+                subtitle,
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                time,
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  color: Colors.grey,
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-    );
-  }
-
-  IconData getIcon(String iconName) {
-    switch (iconName) {
-      case 'money':
-        return Icons.attach_money;
-      case 'gift':
-        return Icons.card_giftcard;
-      case 'person':
-        return Icons.person_add;
-      case 'chart':
-        return Icons.bar_chart;
-      default:
-        return Icons.notifications;
-    }
-  }
+        ),
+      ],
+    ),
+  );
 }

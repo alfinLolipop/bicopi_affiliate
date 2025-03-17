@@ -1,13 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'detail_member.dart';
 
 void main() {
-  runApp(MaterialApp(
-    debugShowCheckedModeBanner: false,
-    home: MemberScreen(),
-  ));
+  runApp(MyApp());
 }
 
-class MemberScreen extends StatelessWidget {
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: MemberScreen(),
+    );
+  }
+}
+
+class MemberScreen extends StatefulWidget {
+  const MemberScreen({super.key});
+
+  @override
+  _MemberScreenState createState() => _MemberScreenState();
+}
+
+class _MemberScreenState extends State<MemberScreen> {
   final List<Map<String, String>> members = List.generate(
     3,
     (index) => {
@@ -23,10 +39,11 @@ class MemberScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          "Members",
-          style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
+          "Member",
+          style: GoogleFonts.poppins(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
           ),
         ),
         centerTitle: true,
@@ -62,7 +79,8 @@ class MemberScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8.0),
                   borderSide: BorderSide(color: Colors.grey),
                 ),
-                contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+                contentPadding:
+                    EdgeInsets.symmetric(vertical: 10, horizontal: 10),
               ),
             ),
             SizedBox(height: 10),
@@ -77,7 +95,8 @@ class MemberScreen extends StatelessWidget {
                       width: 20,
                       height: 20,
                     ),
-                    label: Text("Filter", style: TextStyle(color: Colors.green)),
+                    label:
+                        Text("Filter", style: TextStyle(color: Colors.green)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       elevation: 0,
@@ -97,7 +116,8 @@ class MemberScreen extends StatelessWidget {
                       width: 20,
                       height: 20,
                     ),
-                    label: Text("Sortir", style: TextStyle(color: Colors.green)),
+                    label:
+                        Text("Sortir", style: TextStyle(color: Colors.green)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       elevation: 0,
@@ -110,92 +130,76 @@ class MemberScreen extends StatelessWidget {
                 ),
               ],
             ),
-      
-
             SizedBox(height: 10),
             Expanded(
-  child: ListView.builder(
-    itemCount: members.length,
-    itemBuilder: (context, index) {
-      final member = members[index];
-      return Container(
-        margin: EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-        padding: EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.green.shade100,
-              blurRadius: 6,
-              spreadRadius: 1,
-              offset: Offset(0, 2),
-            ),
-          ],
-          border: Border.all(color: Colors.green.shade200),
-        ),
-        child: Stack(
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 24,
-                  backgroundImage: AssetImage('assets/icons/avatar.png'),
-                ),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        member["name"]!,
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              child: ListView.builder(
+                itemCount: members.length,
+                itemBuilder: (context, index) {
+                  final member = members[index];
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const DetailMemberScreen()),
+                      );
+                    },
+                    child: Container(
+                      margin: EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+                      padding: EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.green.shade100,
+                            blurRadius: 6,
+                            spreadRadius: 1,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                        border: Border.all(color: Colors.green.shade200),
                       ),
-                      Text(
-                        member["email"]!,
-                        style: TextStyle(color: Colors.black54),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 24,
+                            backgroundImage:
+                                AssetImage('assets/icons/avatar.png'),
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  member["name"]!,
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16),
+                                ),
+                                Text(
+                                  member["email"]!,
+                                  style: TextStyle(color: Colors.black54),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  "Bergabung : ${member["joined"]}",
+                                  style: TextStyle(
+                                      color: Colors.grey, fontSize: 13),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.arrow_forward_ios,
+                              size: 14, color: Colors.black54),
+                        ],
                       ),
-                      SizedBox(height: 4),
-                      Text(
-                        "Bergabung : ${member["joined"]}",
-                        style: TextStyle(color: Colors.grey, fontSize: 13),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            Positioned(
-              top: 0,
-              right: 0,
-              child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: Colors.green[100],
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Text(
-                  member["status"]!,
-                  style: TextStyle(
-                    color: Colors.green,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                ),
+                    ),
+                  );
+                },
               ),
             ),
-            Positioned(
-              bottom: 8,
-              right: 5,
-              child: Icon(Icons.arrow_forward_ios, size: 14, color: Colors.black54),
-            ),
-          ],
-        ),
-      );
-    },
-  ),
-),
-
           ],
         ),
       ),
