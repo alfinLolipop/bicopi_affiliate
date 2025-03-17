@@ -31,7 +31,7 @@ class PointsScreen extends StatefulWidget {
 
 class _PointsScreen extends State<PointsScreen> {
   int _currentIndex = 1;
-  int currentPoints = 250; // Simpan jumlah poin pengguna
+  int currentPoints = 2500; // Simpan jumlah poin pengguna
 
   final List<Map<String, dynamic>> rewards = [
     {"title": "Gratis Kopi", "points": 150},
@@ -114,6 +114,7 @@ class _PointsScreen extends State<PointsScreen> {
           ),
         ],
       ),
+
 
       // Bottom Navigation Bar
       bottomNavigationBar: BottomNavigationBar(
@@ -236,8 +237,10 @@ class _PointsScreen extends State<PointsScreen> {
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
-                
-                // TIDAK MENGURANGI POIN DI UI (Karena ini ranah admin)
+
+                setState(() {
+                  currentPoints -= points; // Kurangi poin setelah berhasil menukar
+                });
 
                 String transactionId = generateUniqueId(); // Buat ID unik
                 Navigator.push(
