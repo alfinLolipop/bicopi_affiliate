@@ -4,9 +4,16 @@ import 'fleksibel_praktis.dart';
 import 'reward_bonus.dart';
 import 'penghasilan_tambahan.dart';
 import 'login.dart';
+import 'lupa_password.dart';
 import 'signup.dart';
 import 'verifikasi_email.dart';
-import 'lupa_password.dart';
+import 'home.dart';
+import 'member.dart';
+import 'detail_member.dart';
+import 'points.dart';
+import 'popup.dart';
+import 'notifikasi.dart';
+import 'profil.dart';
 
 void main() {
   runApp(const MyApp());

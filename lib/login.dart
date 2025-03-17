@@ -30,7 +30,7 @@ class _LoginScreenState extends State<LoginScreen> {
     // Jika email & password terisi, pindah ke HomeScreen
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => const DashboardScreen()),
+      MaterialPageRoute(builder: (context) => const HomeScreen()),
     );
   }
 
