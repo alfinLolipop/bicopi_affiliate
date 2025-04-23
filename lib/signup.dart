@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'verifikasi_email.dart'; // Import halaman verifikasi email
 import 'login.dart' as login_page;
 
@@ -16,7 +17,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-  final TextEditingController confirmPasswordController = TextEditingController();
+  final TextEditingController confirmPasswordController =
+      TextEditingController();
   final TextEditingController referralController = TextEditingController();
 
   @override
@@ -57,7 +59,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 const SizedBox(height: 20),
 
                 // Name Input
-                _buildTextField(controller: nameController, icon: Icons.person, hintText: "Nama"),
+                _buildTextField(
+                    controller: nameController,
+                    icon: Icons.person,
+                    hintText: "Nama"),
 
                 // Email Input
                 _buildTextField(
@@ -92,14 +97,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
 
                 // Kode Referral Input
-                _buildTextField(controller: referralController, icon: Icons.people, hintText: "Kode Referral"),
+                _buildTextField(
+  controller: referralController,
+  icon: FontAwesomeIcons.tiktok, // Gunakan langsung tanpa FaIcon()
+  hintText: "Media Sosial",
+),
+
+
                 const SizedBox(height: 0),
                 const Align(
                   alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Punya kode referral?',
-                    style: TextStyle(fontSize: 14, color: Colors.black54),
-                  ),
                 ),
                 const SizedBox(height: 20),
 
@@ -113,7 +120,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const EmailVerificationScreen(),
+                            builder: (context) =>
+                                const EmailVerificationScreen(),
                           ),
                         );
                       }
@@ -134,25 +142,27 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 const SizedBox(height: 15),
 
                 // Login Link
-Row(
-  mainAxisAlignment: MainAxisAlignment.center,
-  children: [
-    const Text('Sudah punya akun?', style: TextStyle(fontSize: 14)),
-    TextButton(
-      onPressed: () {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const login_page.LoginScreen()),
-        );
-      },
-      child: const Text(
-        'Login',
-        style: TextStyle(color: Colors.green, fontSize: 14),
-      ),
-    ),
-  ],
-),
-
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text('Sudah punya akun?',
+                        style: TextStyle(fontSize: 14)),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) =>
+                                  const login_page.LoginScreen()),
+                        );
+                      },
+                      child: const Text(
+                        'Login',
+                        style: TextStyle(color: Colors.green, fontSize: 14),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -225,7 +235,8 @@ Row(
           hintText: hintText,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
           suffixIcon: IconButton(
-            icon: Icon(obscureText ? Icons.visibility_off : Icons.visibility, color: Colors.black54),
+            icon: Icon(obscureText ? Icons.visibility_off : Icons.visibility,
+                color: Colors.black54),
             onPressed: onToggle,
           ),
         ),

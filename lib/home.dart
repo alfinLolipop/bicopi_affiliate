@@ -7,6 +7,7 @@ import 'points.dart';
 import 'package:bicopi_affiliate/popup.dart';
 import 'notifikasi.dart';
 import 'profil.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() {
   runApp(MyApp());
