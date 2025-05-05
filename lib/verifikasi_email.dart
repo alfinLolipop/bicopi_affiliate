@@ -1,212 +1,95 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'login.dart'; // Ganti dengan file halaman login kamu
 
-void main() {
-  runApp(const MyApp());
-}
+class VerifikasiEmailScreen extends StatefulWidget {
+  final String email;
+   final Map<String, dynamic>? userData; // ← tambah ini
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: const EmailVerificationScreen(),
-    );
-  }
-}
-
-class EmailVerificationScreen extends StatefulWidget {
-  const EmailVerificationScreen({super.key});
+  const VerifikasiEmailScreen({super.key, required this.email, this.userData});
 
   @override
-  _EmailVerificationScreenState createState() => _EmailVerificationScreenState();
+  State<VerifikasiEmailScreen> createState() => _VerifikasiEmailScreenState();
 }
 
-class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
-  List<TextEditingController> otpControllers =
-      List.generate(4, (index) => TextEditingController());
-  int countdown = 0;
-  bool isResendAvailable = true;
-  bool isButtonEnabled = false;
-  final String correctOTP = "1234";
+class _VerifikasiEmailScreenState extends State<VerifikasiEmailScreen> {
+  Timer? _timer;
+  bool _checking = false;
 
-  void startCountdown() {
-    setState(() {
-      countdown = 30;
-      isResendAvailable = false;
-    });
-    Future.delayed(const Duration(seconds: 1), countdownTimer);
+  @override
+  void initState() {
+    super.initState();
+    // Cek status verifikasi setiap 5 detik
+    _timer = Timer.periodic(const Duration(seconds: 5), (_) => _checkVerification());
   }
 
-  void countdownTimer() {
-    if (countdown > 0) {
-      setState(() {
-        countdown--;
-      });
-      Future.delayed(const Duration(seconds: 1), countdownTimer);
-    } else {
-      setState(() {
-        isResendAvailable = true;
-      });
+  Future<void> _checkVerification() async {
+    if (_checking) return;
+    _checking = true;
+
+    try {
+      final user = await Supabase.instance.client.auth.getUser();
+      await Supabase.instance.client.auth.refreshSession();
+
+      final updatedUser = await Supabase.instance.client.auth.getUser();
+
+      if (updatedUser.user?.emailConfirmedAt != null) {
+        _timer?.cancel();
+
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()), // Ganti dengan halaman login kamu
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      // Error log atau ignore
+    } finally {
+      _checking = false;
     }
   }
 
-  void checkOtpCompletion() {
-    setState(() {
-      isButtonEnabled = otpControllers.every((controller) => controller.text.isNotEmpty);
-    });
-  }
-
-  void verifyOTP() {
-    String enteredOTP = otpControllers.map((e) => e.text).join();
-    if (enteredOTP == correctOTP) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Kode OTP salah!'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
+      body: Center(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.all(24.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Image.asset('assets/logo_bicopi.png', width: 120),
-              const SizedBox(height: 30),
-              const Text(
-                'Verifikasi e-mail anda',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Cek email Anda & masukkan kode verifikasi untuk melanjutkan.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: Colors.black54),
-              ),
+              const Icon(Icons.check_circle_outline, size: 80, color: Colors.green),
               const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(4, (index) {
-                  return Container(
-                    width: 50,
-                    height: 50,
-                    margin: const EdgeInsets.symmetric(horizontal: 5),
-                    child: TextField(
-                      controller: otpControllers[index],
-                      keyboardType: TextInputType.number,
-                      textAlign: TextAlign.center,
-                      maxLength: 1,
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                      decoration: InputDecoration(
-                        counterText: '',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      onChanged: (value) {
-                        if (value.isNotEmpty && index < 3) {
-                          FocusScope.of(context).nextFocus();
-                        }
-                        checkOtpCompletion();
-                      },
-                    ),
-                  );
-                }),
+              const Text(
+                'Silakan Cek Email Anda Untuk Verifikasi',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Kami telah mengirim email verifikasi ke ${widget.email}.\nSilakan periksa dan klik tautan untuk melanjutkan.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16),
               ),
               const SizedBox(height: 30),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text('Belum menerima kode?', style: TextStyle(fontSize: 14)),
-                  const SizedBox(width: 5),
-                  GestureDetector(
-                    onTap: isResendAvailable ? startCountdown : null,
-                    child: Text(
-                      isResendAvailable ? 'Kirim ulang' : 'dalam $countdown detik',
-                      style: TextStyle(
-                        color: isResendAvailable ? Colors.green : Colors.grey,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                ],
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    (route) => false,
+                  );
+                },
+                child: const Text('Kembali ke Halaman Login'),
               ),
-              const SizedBox(height: 40),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: isButtonEnabled ? verifyOTP : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isButtonEnabled ? Colors.green : Colors.grey,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(50),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 15),
-                  ),
-                  child: const Text(
-                    'Lanjut',
-                    style: TextStyle(fontSize: 16, color: Colors.white),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20), // Tambahan jarak agar lebih rapi
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class LoginScreen extends StatelessWidget {
-  const LoginScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.green,
-        title: const Text('Login'),
-        centerTitle: true,
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              'Selamat datang di halaman Login!',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {},
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-              ),
-              child: const Text(
-                'Masuk',
-                style: TextStyle(fontSize: 16, color: Colors.white),
-              ),
-            ),
-          ],
         ),
       ),
     );

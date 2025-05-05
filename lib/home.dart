@@ -32,8 +32,42 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
+  String _selectedFilter = 'Daily';
+  String _userName = '...'; 
 
-  String _selectedFilter = 'Daily'; // Tambahkan deklarasi
+  @override
+    void initState() {
+      super.initState();
+      _getUserData();
+    }
+
+ Future<void> _getUserData() async {
+  final user = Supabase.instance.client.auth.currentUser;
+
+  if (user != null) {
+    try {
+      final response = await Supabase.instance.client
+          .from('users')
+          .select('username')
+          .eq('id_user', user.id) 
+          .maybeSingle();
+
+      print('Data username: $response');
+
+      if (response != null && response['username'] != null) {
+        setState(() {
+          _userName = response['username'];
+        });
+      } else {
+        print('Username tidak ditemukan');
+      }
+    } catch (error) {
+      print('Gagal mengambil data user: $error');
+    }
+  } else {
+    print('User belum login');
+  }
+}
 
   void _onTabTapped(int index) {
     setState(() {
@@ -48,12 +82,12 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        automaticallyImplyLeading: false, // Menghilangkan panah kembali
+        automaticallyImplyLeading: false,
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Halo Dimas',
+              'Halo $_userName',
               style: GoogleFonts.poppins(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -79,7 +113,7 @@ class _HomeScreenState extends State<HomeScreen> {
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(2.0),
           child: Container(
-            color: Colors.green, // Warna garis hijau
+            color: Colors.green,
             height: 2.0,
           ),
         ),
@@ -95,7 +129,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 _buildPointsCard(),
 
                 SizedBox(height: 20),
-                // Tambahkan Container yang membungkus padding
                 Container(
                   padding: EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -107,10 +140,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                   child: Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.start, // Perbaikan Typo
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Baris Judul + Dropdown Filter
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -137,10 +168,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ],
                       ),
-
                       SizedBox(height: 12),
-
-                      // Placeholder untuk Grafik
                       Container(
                         height: 120,
                         decoration: BoxDecoration(
@@ -173,7 +201,6 @@ class _HomeScreenState extends State<HomeScreen> {
         currentIndex: _currentIndex,
         onTap: (index) {
           if (index != _currentIndex) {
-            // Hanya navigasi jika halaman berbeda
             setState(() {
               _currentIndex = index;
             });
@@ -186,7 +213,7 @@ class _HomeScreenState extends State<HomeScreen> {
             } else if (index == 3) {
               nextScreen = const ProfileScreen();
             } else {
-              return; // Jika di Home, jangan lakukan navigasi
+              return;
             }
 
             Navigator.pushReplacement(
@@ -274,15 +301,15 @@ class _HomeScreenState extends State<HomeScreen> {
           MemberItem(
               name: 'John Doe',
               date: '15 Februari 2025',
-              image: 'assets/john.png'),
+              image: 'assets/profil.png'),
           MemberItem(
               name: 'Sarah Smith',
               date: '14 Februari 2025',
-              image: 'assets/sarah.png'),
+              image: 'assets/profil.png'),
           MemberItem(
               name: 'Ashley Smith',
               date: '13 Februari 2025',
-              image: 'assets/ashley.png'),
+              image: 'assets/profil.png'),
           SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
