@@ -1,0 +1,2 @@
+C:/projek/bicopi_affiliate/android/app/.cxx/Debug/474p3c4x/armeabi-v7a/CMakeFiles/edit_cache.dir
+C:/projek/bicopi_affiliate/android/app/.cxx/Debug/474p3c4x/armeabi-v7a/CMakeFiles/rebuild_cache.dir
