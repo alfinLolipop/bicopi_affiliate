@@ -60,20 +60,19 @@ class _NotificationScreenState extends State<NotificationScreen> {
         ),
       ),
       body: Container(
-        color: const Color.fromARGB(
-            255, 244, 244, 244), // Latar belakang abu-abu muda
+        color: const Color.fromARGB(255, 255, 255, 255), // Latar belakang abu-abu muda
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           children: [
             sectionTitle('Hari ini'),
             notificationCard(
                 'Imbalan Komisi',
-                'Anda menerima komisi Rp. 5000 dari pesanan #123',
+                'Anda menerima komisi 5000 points dari bertambahnya member',
                 'assets/icons/money.png',
                 '2 jam yang lalu'),
             notificationCard(
                 'Hadiah Baru Tersedia',
-                'Anda telah membuka hadiah baru, klaim sekarang!',
+                'Anda telah memngirim komisi 3000 points ke John Doe',
                 'assets/icons/gift.png',
                 '5 jam yang lalu'),
             const SizedBox(height: 16),
@@ -83,15 +82,11 @@ class _NotificationScreenState extends State<NotificationScreen> {
                 'John Doe bergabung menggunakan link referral anda',
                 'assets/icons/referral.png',
                 'kemarin jam 02.30 siang'),
-            notificationCard(
-                'Pembaharuan Kinerja',
-                'Penjualan Anda meningkat sebesar 15% minggu ini',
-                'assets/icons/performance.png',
-                'kemarin jam 10.00 pagi'),
-          ],
+                      ],
         ),
       ),
       bottomNavigationBar: BottomNavigationBar(
+        backgroundColor: Colors.white,
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Colors.green,
         unselectedItemColor: Colors.grey,
