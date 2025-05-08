@@ -208,11 +208,11 @@ class _DetailMemberScreenState extends State<DetailMemberScreen> {
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 8),
             _buildTransactionItem(
-                '17 Maret 2025', 'Rp. 100.000', 'Tertunda', Colors.red),
+                '17 Maret 2025', '5000 points', 'Tertunda', Colors.red),
             _buildTransactionItem(
-                '16 Maret 2025', 'Rp. 100.000', 'Sukses', Colors.green),
+                '16 Maret 2025', '5000 points', 'Sukses', Colors.green),
             _buildTransactionItem(
-                '15 Maret 2025', 'Rp. 100.000', 'Sukses', Colors.green),
+                '15 Maret 2025', '5000 points', 'Sukses', Colors.green),
           ],
         ),
       ),

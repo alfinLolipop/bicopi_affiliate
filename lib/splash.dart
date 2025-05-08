@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'fleksibel_praktis.dart'; // Impor file penghasilan_tambahan.dart
+import 'package:supabase_flutter/supabase_flutter.dart';  // Impor Supabase
+import 'fleksibel_praktis.dart'; // Impor halaman tujuan
+import 'login.dart'; // Impor halaman login jika perlu
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -12,16 +14,36 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
+    _checkLoginStatus();
+  }
+
+  // Fungsi untuk mengecek status login
+  Future<void> _checkLoginStatus() async {
+    // Cek apakah ada session aktif
+    final session = Supabase.instance.client.auth.currentSession;
+
+    // Tunda 3 detik sebelum melakukan navigasi
+    await Future.delayed(const Duration(seconds: 3));
+
+    if (mounted) {
+      // Jika ada session, langsung ke halaman Home
+      if (session != null) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => const FleksibelPraktisScreen(), // Langsung ke PenghasilanTambahanScreen
+            builder: (context) => const FleksibelPraktisScreen(), // Arahkan ke halaman Home
+          ),
+        );
+      } else {
+        // Jika tidak ada session (belum login), arahkan ke halaman Login
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const LoginScreen(), // Arahkan ke halaman Login
           ),
         );
       }
-    });
+    }
   }
 
   @override

@@ -1,246 +1,284 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'verifikasi_email.dart'; // Import halaman verifikasi email
-import 'login.dart' as login_page;
+import 'verifikasi_email.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:async';
+import 'login.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Supabase.initialize(
+    url: 'https://nfafmiaxogrxxwjuyqfs.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mYWZtaWF4b2dyeHh3anV5cWZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDAyNTIzMDcsImV4cCI6MjA1NTgyODMwN30.tsapVtnxkicRa-eTQLhKTBQtm7H9U1pfwBBdGdqryW0',
+  );
+  runApp(const MaterialApp(
+    debugShowCheckedModeBanner: false,
+    home: SignUpScreen(),
+  ));
+}
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
 
   @override
-  _SignUpScreenState createState() => _SignUpScreenState();
+  State<SignUpScreen> createState() => _SignUpScreenState();
 }
 
-class _SignUpScreenState extends State<SignUpScreen> {
-  bool obscurePassword = true;
-  bool obscureConfirmPassword = true;
-
+class _SignUpScreenState extends State<SignUpScreen> with TickerProviderStateMixin {
+  final _formKey = GlobalKey<FormState>();
   final TextEditingController nameController = TextEditingController();
+  final TextEditingController phoneController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-  final TextEditingController confirmPasswordController =
-      TextEditingController();
-  final TextEditingController referralController = TextEditingController();
+  final TextEditingController confirmPasswordController = TextEditingController();
+
+  bool _isPasswordVisible = false;
+  bool _isConfirmPasswordVisible = false;
+  bool _isSigningUp = false;
+
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 1000),
+      vsync: this,
+    )..forward();
+
+    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
+    );
+  }
+
+  Future<void> _signUp() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isSigningUp = true;
+    });
+
+    try {
+      final response = await Supabase.instance.client.auth.signUp(
+        email: emailController.text.trim(),
+        password: passwordController.text,
+        data: {
+         'username': nameController.text.trim(),
+       },
+      );
+
+      final user = response.user;
+      if (user == null) {
+        throw Exception('Gagal mendaftar');
+      }
+
+      await Supabase.instance.client.from('users').insert({
+        'id_user': user.id,
+        'username': nameController.text.trim(),
+        'email': emailController.text.trim(),
+        'password': passwordController.text,
+        'phone': phoneController.text.trim(),
+        'id_user_level': 2,
+        'created_at': DateTime.now().toIso8601String(),
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pendaftaran berhasil!')),
+      );
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+      );
+    } on AuthException catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${error.message}')),
+      );
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${error.toString()}')),
+      );
+    } finally {
+      setState(() {
+        _isSigningUp = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    nameController.dispose();
+    phoneController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    confirmPasswordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset: true,
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const SizedBox(height: 20),
-
-                // Logo
-                Image.asset(
-                  'assets/logo_bicopi.png',
-                  width: 100,
-                ),
-                const SizedBox(height: 25),
-
-                // Title
-                const Text(
-                  'Sign Up',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  'Masukkan email dan password Anda.',
-                  style: TextStyle(fontSize: 14, color: Colors.black54),
-                ),
-                const SizedBox(height: 20),
-
-                // Name Input
-                _buildTextField(
-                    controller: nameController,
-                    icon: Icons.person,
-                    hintText: "Nama"),
-
-                // Email Input
-                _buildTextField(
-                  controller: emailController,
-                  icon: Icons.email,
-                  hintText: "E-mail",
-                  keyboardType: TextInputType.emailAddress,
-                ),
-
-                // Password Input
-                _buildPasswordField(
-                  controller: passwordController,
-                  hintText: "Password",
-                  obscureText: obscurePassword,
-                  onToggle: () {
-                    setState(() {
-                      obscurePassword = !obscurePassword;
-                    });
-                  },
-                ),
-
-                // Confirm Password Input
-                _buildPasswordField(
-                  controller: confirmPasswordController,
-                  hintText: "Konfirmasi Password",
-                  obscureText: obscureConfirmPassword,
-                  onToggle: () {
-                    setState(() {
-                      obscureConfirmPassword = !obscureConfirmPassword;
-                    });
-                  },
-                ),
-
-                // Kode Referral Input
-                _buildTextField(
-  controller: referralController,
-  icon: FontAwesomeIcons.tiktok, // Gunakan langsung tanpa FaIcon()
-  hintText: "Media Sosial",
-),
-
-
-                const SizedBox(height: 0),
-                const Align(
-                  alignment: Alignment.centerLeft,
-                ),
-                const SizedBox(height: 20),
-
-                // Sign Up Button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      if (_validateInputs()) {
-                        // Navigasi ke halaman verifikasi email
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                const EmailVerificationScreen(),
-                          ),
-                        );
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    child: const Text(
-                      'Daftar',
-                      style: TextStyle(fontSize: 16, color: Colors.white),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 15),
-
-                // Login Link
-                Row(
+      body: Stack(
+        children: [
+          Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text('Sudah punya akun?',
-                        style: TextStyle(fontSize: 14)),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) =>
-                                  const login_page.LoginScreen()),
-                        );
-                      },
-                      child: const Text(
-                        'Login',
-                        style: TextStyle(color: Colors.green, fontSize: 14),
+                    Hero(
+                      tag: "logo",
+                      child: CircleAvatar(
+                        radius: 40,
+                        backgroundColor: Colors.green.withOpacity(0.1),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(40),
+                          child: Image.asset(
+                            'assets/logo_bicopi.png',
+                            width: 60,
+                            height: 60,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
                       ),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      "Buat Akun",
+                      style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.black),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      "Daftar untuk melanjutkan",
+                      style: TextStyle(fontSize: 16, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 30),
+                    Form(
+                      key: _formKey,
+                      child: Column(
+                        children: [
+                          _buildTextField(
+                              controller: nameController,
+                              label: "Nama Lengkap",
+                              validator: (value) {
+                                if (value == null || value.isEmpty) return "Nama Lengkap tidak boleh kosong";
+                                return null;
+                              },
+                            ),
+
+                          _buildTextField(
+                            controller: phoneController, 
+                            label: "No Telepon", 
+                            keyboardType: TextInputType.phone),
+                          const SizedBox(height: 20),
+                          _buildTextField(
+                            controller: emailController, 
+                            label: "Email", 
+                            keyboardType: TextInputType.emailAddress, 
+                            validator: (value) {
+                            if (value == null || value.isEmpty) return "Email tidak boleh kosong";
+                            if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) return "Masukkan email yang valid";
+                            return null;
+                          }),
+                          const SizedBox(height: 20),
+                          _buildPasswordField(controller: passwordController, label: "Password", isVisible: _isPasswordVisible, onToggle: () {
+                            setState(() => _isPasswordVisible = !_isPasswordVisible);
+                          }),
+                          const SizedBox(height: 20),
+                          _buildPasswordField(controller: confirmPasswordController, label: "Konfirmasi Password", isVisible: _isConfirmPasswordVisible, onToggle: () {
+                            setState(() => _isConfirmPasswordVisible = !_isConfirmPasswordVisible);
+                          }),
+                          const SizedBox(height: 20),
+                          ElevatedButton(
+                            onPressed: _isSigningUp ? null : _signUp,
+                            style: ElevatedButton.styleFrom(
+                              minimumSize: const Size(double.infinity, 50),
+                            ),
+                            child: const Text("Daftar", style: TextStyle(fontSize: 18)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text("Sudah punya akun?", style: TextStyle(color: Colors.black)),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+                          },
+                          child: const Text("Login", style: TextStyle(color: Colors.green)),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
           ),
-        ),
+          if (_isSigningUp)
+            Container(
+              color: Colors.black.withOpacity(0.5),
+              child: const Center(child: CircularProgressIndicator(color: Colors.white)),
+            ),
+        ],
       ),
     );
   }
 
-  // Validasi input
-  bool _validateInputs() {
-    if (nameController.text.isEmpty ||
-        emailController.text.isEmpty ||
-        passwordController.text.isEmpty ||
-        confirmPasswordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Semua kolom harus diisi!'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return false;
-    }
-    if (passwordController.text != confirmPasswordController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Password dan konfirmasi password tidak cocok!'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return false;
-    }
-    return true;
-  }
-
-  // Widget untuk membuat TextField biasa
   Widget _buildTextField({
     required TextEditingController controller,
-    required IconData icon,
-    required String hintText,
-    TextInputType? keyboardType,
+    required String label,
+    TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator,
   }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: TextField(
-        controller: controller,
-        keyboardType: keyboardType,
-        decoration: InputDecoration(
-          prefixIcon: Icon(icon, color: Colors.black54),
-          hintText: hintText,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-      ),
+    IconData icon = Icons.person;
+  if (label.contains("Nama")) icon = Icons.account_circle;
+  if (label.contains("Telepon")) icon = Icons.phone;
+  if (label.contains("Email")) icon = Icons.email;
+  
+    return TextFormField(
+    controller: controller,
+    keyboardType: keyboardType,
+    decoration: InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon),
+    ),
+      validator: validator ?? (value) {
+        if (value == null || value.isEmpty) return "$label tidak boleh kosong";
+        return null;
+      },
     );
   }
 
-  // Widget untuk membuat TextField password
   Widget _buildPasswordField({
     required TextEditingController controller,
-    required String hintText,
-    required bool obscureText,
+    required String label,
+    required bool isVisible,
     required VoidCallback onToggle,
   }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: TextField(
-        controller: controller,
-        obscureText: obscureText,
-        decoration: InputDecoration(
-          prefixIcon: const Icon(Icons.lock, color: Colors.black54),
-          hintText: hintText,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-          suffixIcon: IconButton(
-            icon: Icon(obscureText ? Icons.visibility_off : Icons.visibility,
-                color: Colors.black54),
-            onPressed: onToggle,
-          ),
+    return TextFormField(
+      controller: controller,
+      obscureText: !isVisible,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: const Icon(Icons.lock),
+        suffixIcon: IconButton(
+          icon: Icon(isVisible ? Icons.visibility : Icons.visibility_off),
+          onPressed: onToggle,
         ),
       ),
+      validator: (value) {
+        if (value == null || value.isEmpty) return "$label tidak boleh kosong";
+        if (label.contains("Konfirmasi") && value != passwordController.text) return "Password tidak cocok";
+        if (label.contains("Password") && value.length < 6) return "Password minimal 6 karakter";
+        return null;
+      },
     );
   }
 }
