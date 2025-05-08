@@ -31,7 +31,7 @@ class PointsScreen extends StatefulWidget {
 
 class _PointsScreen extends State<PointsScreen> {
   int _currentIndex = 1;
-  int currentPoints = 2500; // Simpan jumlah poin pengguna
+  int currentPoints = 2500;
 
   final List<Map<String, dynamic>> rewards = [
     {"title": "Gratis Kopi", "points": 150},
@@ -45,7 +45,6 @@ class _PointsScreen extends State<PointsScreen> {
       _currentIndex = index;
     });
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -97,6 +96,11 @@ class _PointsScreen extends State<PointsScreen> {
                   "$currentPoints",
                   style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.green),
                 ),
+                const SizedBox(height: 4),
+                const Text(
+                  "1 poin = Rp1",
+                  style: TextStyle(fontSize: 12, color: Colors.black54),
+                ),
               ],
             ),
           ),
@@ -115,7 +119,6 @@ class _PointsScreen extends State<PointsScreen> {
         ],
       ),
 
-
       // Bottom Navigation Bar
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
@@ -124,7 +127,6 @@ class _PointsScreen extends State<PointsScreen> {
         currentIndex: _currentIndex,
         onTap: (index) {
           if (index != _currentIndex) {
-            // Hanya navigasi jika halaman berbeda
             setState(() {
               _currentIndex = index;
             });
@@ -137,7 +139,7 @@ class _PointsScreen extends State<PointsScreen> {
             } else if (index == 3) {
               nextScreen = const ProfileScreen();
             } else {
-              return; // Jika di Home, jangan lakukan navigasi
+              return;
             }
 
             Navigator.pushReplacement(
@@ -146,11 +148,10 @@ class _PointsScreen extends State<PointsScreen> {
             );
           }
         },
-        items: [
+        items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.star), label: 'Points'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.notifications), label: 'Notifikasi'),
+          BottomNavigationBarItem(icon: Icon(Icons.notifications), label: 'Notifikasi'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
@@ -164,8 +165,8 @@ class _PointsScreen extends State<PointsScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          const BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))
+        boxShadow: const [
+          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))
         ],
       ),
       child: Column(
@@ -203,7 +204,6 @@ class _PointsScreen extends State<PointsScreen> {
 
   void showRedeemDialog(BuildContext context, String title, int points) {
     if (currentPoints < points) {
-      // Jika poin tidak cukup, tampilkan pop-up peringatan
       showDialog(
         context: context,
         builder: (context) {
@@ -222,7 +222,6 @@ class _PointsScreen extends State<PointsScreen> {
       return;
     }
 
-    // Jika poin cukup, tampilkan konfirmasi penukaran
     showDialog(
       context: context,
       builder: (context) {
@@ -239,17 +238,17 @@ class _PointsScreen extends State<PointsScreen> {
                 Navigator.pop(context);
 
                 setState(() {
-                  currentPoints -= points; // Kurangi poin setelah berhasil menukar
+                  currentPoints -= points;
                 });
 
-                String transactionId = generateUniqueId(); // Buat ID unik
+                String transactionId = generateUniqueId();
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => PopupPage(
                       title: title,
                       points: points,
-                      transactionId: transactionId, // Kirim ID unik
+                      transactionId: transactionId,
                     ),
                   ),
                 );
@@ -262,7 +261,6 @@ class _PointsScreen extends State<PointsScreen> {
     );
   }
 
-  // Fungsi untuk membuat ID unik
   String generateUniqueId() {
     return DateTime.now().millisecondsSinceEpoch.toString();
   }

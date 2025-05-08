@@ -33,15 +33,15 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   String _selectedFilter = 'Daily';
-  String _userName = '...'; 
+  String _userName = '...';
 
   @override
-    void initState() {
-      super.initState();
-      _getUserData();
-    }
+  void initState() {
+    super.initState();
+    _getUserData();
+  }
 
- Future<void> _getUserData() async {
+  Future<void> _getUserData() async {
   final user = Supabase.instance.client.auth.currentUser;
 
   if (user != null) {
@@ -49,7 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final response = await Supabase.instance.client
           .from('users')
           .select('username')
-          .eq('id_user', user.id) 
+          .eq('id', user.id) // ganti jadi 'id' bukan 'id_user'
           .maybeSingle();
 
       print('Data username: $response');
@@ -68,6 +68,7 @@ class _HomeScreenState extends State<HomeScreen> {
     print('User belum login');
   }
 }
+
 
   void _onTabTapped(int index) {
     setState(() {

@@ -79,7 +79,7 @@ class _SignUpScreenState extends State<SignUpScreen> with TickerProviderStateMix
         'email': emailController.text.trim(),
         'password': passwordController.text,
         'phone': phoneController.text.trim(),
-        'id_user_level': 2,
+        'id_user_level': 4,
         'created_at': DateTime.now().toIso8601String(),
       });
 
@@ -87,9 +87,13 @@ class _SignUpScreenState extends State<SignUpScreen> with TickerProviderStateMix
         const SnackBar(content: Text('Pendaftaran berhasil!')),
       );
 
-      Navigator.pushReplacement(
+        Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        MaterialPageRoute(
+          builder: (context) => VerifikasiEmailScreen(
+            email: emailController.text.trim(),
+          ),
+        ),
       );
     } on AuthException catch (error) {
       ScaffoldMessenger.of(context).showSnackBar(
