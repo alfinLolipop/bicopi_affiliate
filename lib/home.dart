@@ -128,6 +128,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String _selectedFilter = 'Daily';
   String _userName = '...';
 
+
   @override
   void initState() {
     final user = Supabase.instance.client.auth.currentUser;

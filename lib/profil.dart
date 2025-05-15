@@ -8,6 +8,7 @@ import 'home.dart';
 import 'points.dart';
 import 'notifikasi.dart';
 import 'ubah_password.dart';
+import 'logout.dart';
 
 class MyApp extends StatelessWidget {
   @override
@@ -23,57 +24,30 @@ class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  _ProfileScreenState createState() => _ProfileScreenState();
+  State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
   int _currentIndex = 3;
-  final User? _user = Supabase.instance.client.auth.currentUser;
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   late Future<void> _userFuture;
   File? _pickedImage;
 
-  Future<void> _logout() async {
-    await Supabase.instance.client.auth.signOut();
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(
-        builder: (context) => VerifikasiEmailScreen(
-            email:'ke Email Anda'),
-      ),
-      (Route<dynamic> route) => false,
-    );
-  }
-
-  Future<void> _pickProfileImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-
-    if (pickedFile != null) {
-      setState(() {
-        _pickedImage = File(pickedFile.path);
+  @override
+  void initState() {
+    super.initState();
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+              builder: (context) => const VerifikasiEmailScreen(email: '')),
+        );
       });
-    }
-  }
-
-  void _onTabTapped(int index) {
-    if (index != _currentIndex) {
-      Widget nextScreen;
-      if (index == 0) {
-        nextScreen = const HomeScreen();
-      } else if (index == 1) {
-        nextScreen = const PointsScreen();
-      } else if (index == 2) {
-        nextScreen = const NotificationScreen();
-      } else {
-        return;
-      }
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => nextScreen),
-      );
+    } else {
+      _userFuture = _fetchUserData();
     }
   }
 
@@ -86,23 +60,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _userFuture = _fetchUserData();
+ Future<void> _logout() async {
+  await Supabase.instance.client.auth.signOut();
+  Navigator.pushAndRemoveUntil(
+    context,
+    MaterialPageRoute(
+      builder: (context) => const LogoutSuccessScreen(), // <- ganti ke sini
+    ),
+    (route) => false,
+  );
+}
 
-      final user = Supabase.instance.client.auth.currentUser;
-      if (user == null) {
-        // Redirect ke halaman verifikasi email kalau belum login
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => VerifikasiEmailScreen(
-                email: ''), // Ganti dengan email user yang sebenarnya jika perlu
-          ),
-        );
-      }
+
+  Future<void> _pickProfileImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      setState(() {
+        _pickedImage = File(pickedFile.path);
+      });
     }
+  }
+
+  void _onTabTapped(int index) {
+    if (index != _currentIndex) {
+      late Widget nextScreen;
+      switch (index) {
+        case 0:
+          nextScreen = const HomeScreen();
+          break;
+        case 1:
+          nextScreen = const PointsScreen();
+          break;
+        case 2:
+          nextScreen = const NotificationScreen();
+          break;
+        default:
+          return;
+      }
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => nextScreen),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -111,15 +112,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        automaticallyImplyLeading: false,
-        title: Text(
-          'Profile',
-          style: GoogleFonts.poppins(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Colors.black,
-          ),
-        ),
+        title: Text('Profile',
+            style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Colors.black)),
         centerTitle: true,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(2.0),
@@ -129,7 +126,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: ListView(
-          shrinkWrap: true,
           children: [
             const SizedBox(height: 20),
             Center(
@@ -142,8 +138,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       backgroundColor: Colors.grey[300],
                       backgroundImage: _pickedImage != null
                           ? FileImage(_pickedImage!)
-                          : const AssetImage('assets/profil.png')
-                              as ImageProvider,
+                          : const AssetImage('assets/profil.png') as ImageProvider,
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -157,16 +152,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       } else {
                         return Column(
                           children: [
-                            Text(
-                              _nameController.text,
-                              style: GoogleFonts.poppins(
-                                  fontSize: 16, fontWeight: FontWeight.w600),
-                            ),
-                            Text(
-                              _emailController.text,
-                              style: GoogleFonts.poppins(
-                                  fontSize: 13, color: Colors.grey[700]),
-                            ),
+                            Text(_nameController.text,
+                                style: GoogleFonts.poppins(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600)),
+                            Text(_emailController.text,
+                                style: GoogleFonts.poppins(
+                                    fontSize: 13, color: Colors.grey[700])),
                           ],
                         );
                       }
@@ -178,8 +170,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.grey[200],
                       foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
                     ),
                     icon: const Icon(Icons.copy, size: 14),
                     label: Text('Copy affiliate link',
@@ -204,16 +194,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               title: 'Keamanan',
               child: ListTile(
                 contentPadding: EdgeInsets.zero,
-                title: Text('Ubah Password',
-                    style: GoogleFonts.poppins(fontSize: 14)),
+                title:
+                    Text('Ubah Password', style: GoogleFonts.poppins(fontSize: 14)),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  Navigator.push(
+                onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => const UbahPasswordScreen()),
-                  );
-                },
+                        builder: (context) => const UbahPasswordScreen())),
               ),
             ),
             const SizedBox(height: 12),
@@ -224,14 +211,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 title: Text('Syarat & Ketentuan',
                     style: GoogleFonts.poppins(fontSize: 14)),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const TermsAndConditionsScreen(),
-                    ),
-                  );
-                },
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const TermsAndConditionsScreen(),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 20),
@@ -267,10 +252,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 }
 
-// Widget tambahan
 Widget buildProfileSection({required String title, required Widget child}) {
   return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    padding: const EdgeInsets.all(12),
     decoration: BoxDecoration(
       color: Colors.white,
       borderRadius: BorderRadius.circular(10),
@@ -322,13 +306,11 @@ Widget buildTextField(String label, TextEditingController controller) {
   );
 }
 
-// Halaman Syarat & Ketentuan
 class TermsAndConditionsScreen extends StatefulWidget {
   const TermsAndConditionsScreen({super.key});
 
   @override
-  State<TermsAndConditionsScreen> createState() =>
-      _TermsAndConditionsScreenState();
+  State<TermsAndConditionsScreen> createState() => _TermsAndConditionsScreenState();
 }
 
 class _TermsAndConditionsScreenState extends State<TermsAndConditionsScreen> {
@@ -368,8 +350,7 @@ class _TermsAndConditionsScreenState extends State<TermsAndConditionsScreen> {
                 ElevatedButton(
                   onPressed: () => _toggleLanguage(false),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        !_isIndonesian ? Colors.green : Colors.grey,
+                    backgroundColor: !_isIndonesian ? Colors.green : Colors.grey,
                   ),
                   child: const Text('English 🇬🇧'),
                 ),
@@ -404,8 +385,8 @@ class _TermsAndConditionsScreenState extends State<TermsAndConditionsScreen> {
             'Terbuka untuk individu atau badan usaha...'),
         _buildTermsItem('3. Tautan Afiliasi dan Materi Promosi',
             'Afiliasi akan menerima tautan afiliasi unik...'),
-        _buildTermsItem(
-            '4. Komisi', 'Afiliasi akan mendapatkan komisi sebesar [xx]%...'),
+        _buildTermsItem('4. Komisi',
+            'Afiliasi akan mendapatkan komisi sebesar [xx]%...'),
         _buildTermsItem('5. Pelaporan dan Pembayaran',
             'Data transaksi tersedia di dashboard...'),
         _buildTermsItem('6. Kewajiban Afiliasi',
@@ -425,8 +406,8 @@ class _TermsAndConditionsScreenState extends State<TermsAndConditionsScreen> {
             'Open to individuals or entities with digital platforms...'),
         _buildTermsItem('3. Affiliate Links and Promotional Materials',
             'Affiliates will receive a unique affiliate link...'),
-        _buildTermsItem(
-            '4. Commission', 'Affiliates will earn a commission of [xx]%...'),
+        _buildTermsItem('4. Commission',
+            'Affiliates will earn a commission of [xx]%...'),
         _buildTermsItem('5. Reporting and Payment',
             'Transaction data is available on the dashboard...'),
         _buildTermsItem('6. Affiliate Obligations',
