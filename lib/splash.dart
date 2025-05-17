@@ -19,32 +19,29 @@ class _SplashScreenState extends State<SplashScreen> {
 
   // Fungsi untuk mengecek status login
   Future<void> _checkLoginStatus() async {
-    // Cek apakah ada session aktif
-    final session = Supabase.instance.client.auth.currentSession;
+  final session = Supabase.instance.client.auth.currentSession;
 
-    // Tunda 3 detik sebelum melakukan navigasi
-    await Future.delayed(const Duration(seconds: 3));
+  await Future.delayed(const Duration(seconds: 3));
 
-    if (mounted) {
-      // Jika ada session, langsung ke halaman Home
-      if (session != null) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const FleksibelPraktisScreen(), // Arahkan ke halaman Home
-          ),
-        );
-      } else {
-        // Jika tidak ada session (belum login), arahkan ke halaman Login
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const LoginScreen(), // Arahkan ke halaman Login
-          ),
-        );
-      }
+  if (mounted) {
+    if (session != null && session.user != null) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const FleksibelPraktisScreen(),
+        ),
+      );
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const LoginScreen(),
+        ),
+      );
     }
   }
+}
+
 
   @override
   Widget build(BuildContext context) {

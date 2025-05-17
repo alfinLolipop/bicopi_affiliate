@@ -43,49 +43,50 @@ class _MemberScreenState extends State<MemberScreen> {
   }
 
   Future<void> _fetchMembers() async {
-  try {
-    final currentUser = Supabase.instance.client.auth.currentUser;
+    try {
+      final currentUser = Supabase.instance.client.auth.currentUser;
 
-    if (currentUser == null) {
-      print('User belum login.');
-      return;
+      if (currentUser == null) {
+        print('User belum login.');
+        return;
+      }
+
+      // Ambil affiliate_id milik user yang sedang login
+      final affiliate = await Supabase.instance.client
+          .from('affiliates')
+          .select('id')
+          .eq('id_user', currentUser.id)
+          .maybeSingle();
+
+      if (affiliate == null) {
+        print("Kamu belum menjadi affiliate.");
+        return;
+      }
+
+      final affiliateId = affiliate['id'];
+
+      // Ambil member yang hanya milik affiliate ini DAN urutkan dari yang terbaru
+      final response = await Supabase.instance.client
+          .from('members')
+          .select('*, users (username, email, phone)')
+          .eq('affiliate_id', affiliateId)
+          .order('joined_at', ascending: false); // <- ini kunci utama
+          
+
+      final data = response as List;
+
+      setState(() {
+        _allMembers = data.cast<Map<String, dynamic>>();
+        _members = _allMembers;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Gagal mengambil data members: $e');
+      setState(() {
+        _isLoading = false;
+      });
     }
-
-    // Ambil affiliate_id milik user yang sedang login
-    final affiliate = await Supabase.instance.client
-        .from('affiliates')
-        .select('id')
-        .eq('id_user', currentUser.id)
-        .maybeSingle();
-
-    if (affiliate == null) {
-      print("Kamu belum menjadi affiliate.");
-      return;
-    }
-
-    final affiliateId = affiliate['id'];
-
-    // Ambil member yang hanya milik affiliate ini
-    final response = await Supabase.instance.client
-        .from('members')
-        .select('*, users (username, email, phone)')
-        .eq('affiliate_id', affiliateId);
-
-    final data = response as List;
-
-    setState(() {
-      _allMembers = data.cast<Map<String, dynamic>>();
-      _members = _allMembers;
-      _isLoading = false;
-    });
-  } catch (e) {
-    print('Gagal mengambil data members: $e');
-    setState(() {
-      _isLoading = false;
-    });
   }
-}
-
 
   void _filterMembers(String query) {
     final filtered = _allMembers.where((member) {
@@ -167,14 +168,23 @@ class _MemberScreenState extends State<MemberScreen> {
                             : null;
 
                         return GestureDetector(
-                          onTap: () {
-                            Navigator.push(
+                          onTap: () async {
+                            await Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) =>
-                                    DetailMemberScreen(data: member),
+                                builder: (context) => DetailMemberScreen(
+                                  data: {
+                                    'id': member['id'],
+                                    'kelipatan': member['kelipatan'],
+                                    'presentase': member['presentase'],
+                                    'users': member['users'],
+                                    'status': member['status'],
+                                  },
+                                ),
                               ),
                             );
+                            // setelah kembali dari halaman detail, ambil ulang data member
+                            _fetchMembers();
                           },
                           child: Container(
                             margin: EdgeInsets.symmetric(

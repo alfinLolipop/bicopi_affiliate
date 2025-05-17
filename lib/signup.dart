@@ -52,63 +52,81 @@ class _SignUpScreenState extends State<SignUpScreen> with TickerProviderStateMix
     );
   }
 
-  Future<void> _signUp() async {
-    if (!_formKey.currentState!.validate()) return;
+  // Tambahkan di LUAR _signUp() atau class _SignUpScreenState
+String generateReferralCode(String name) {
+  final timestamp = DateTime.now().millisecondsSinceEpoch.toString().substring(8);
+  final cleanedName = name.replaceAll(RegExp(r'\s+'), '').toUpperCase();
+  final prefix = cleanedName.length >= 3 ? cleanedName.substring(0, 3) : cleanedName.padRight(3, 'X');
+  return '$prefix$timestamp';
+}
 
-    setState(() {
-      _isSigningUp = true;
+
+  Future<void> _signUp() async {
+  if (!_formKey.currentState!.validate()) return;
+
+  setState(() {
+    _isSigningUp = true;
+  });
+
+  try {
+    final response = await Supabase.instance.client.auth.signUp(
+      email: emailController.text.trim(),
+      password: passwordController.text,
+      data: {
+        'username': nameController.text.trim(),
+      },
+    );
+
+    final user = response.user;
+    if (user == null) {
+      throw Exception('Gagal mendaftar.');
+    }
+
+    // Masukkan data ke tabel users
+    await Supabase.instance.client.from('users').insert({
+      'id_user': user.id,
+      'username': nameController.text.trim(),
+      'email': emailController.text.trim(),
+      'phone': phoneController.text.trim(),
+      'id_user_level': 4,
+      'created_at': DateTime.now().toIso8601String(),
     });
 
-    try {
-      final response = await Supabase.instance.client.auth.signUp(
-        email: emailController.text.trim(),
-        password: passwordController.text,
-        data: {
-         'username': nameController.text.trim(),
-       },
-      );
+    // Generate dan simpan referral code
+    final referralCode = generateReferralCode(nameController.text.trim());
+    await Supabase.instance.client.from('affiliates').insert({
+      'id_user': user.id,
+      'referral_code': referralCode,
+      'total_points': 0,
+      'created_at': DateTime.now().toIso8601String(),
+    });
 
-      final user = response.user;
-      if (user == null) {
-        throw Exception('Gagal mendaftar');
-      }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Pendaftaran berhasil!')),
+    );
 
-      await Supabase.instance.client.from('users').insert({
-        'id_user': user.id,
-        'username': nameController.text.trim(),
-        'email': emailController.text.trim(),
-        'password': passwordController.text,
-        'phone': phoneController.text.trim(),
-        'id_user_level': 4,
-        'created_at': DateTime.now().toIso8601String(),
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pendaftaran berhasil!')),
-      );
-
-        Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => VerifikasiEmailScreen(
-            email: emailController.text.trim(),
-          ),
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => VerifikasiEmailScreen(
+          email: emailController.text.trim(),
         ),
-      );
-    } on AuthException catch (error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${error.message}')),
-      );
-    } catch (error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${error.toString()}')),
-      );
-    } finally {
-      setState(() {
-        _isSigningUp = false;
-      });
-    }
+      ),
+    );
+  } on AuthException catch (error) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error: ${error.message}')),
+    );
+  } catch (error) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error: ${error.toString()}')),
+    );
+  } finally {
+    setState(() {
+      _isSigningUp = false;
+    });
   }
+}
 
   @override
   void dispose() {

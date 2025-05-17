@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class DetailMemberScreen extends StatefulWidget {
   final Map<String, dynamic> data;
@@ -11,30 +12,63 @@ class DetailMemberScreen extends StatefulWidget {
 }
 
 class _DetailMemberScreenState extends State<DetailMemberScreen> {
+  int kelipatan = 10;
   int _selectedPercentage = 10;
-  final List<int> _percentages = [10, 20, 30, 40];
+  final int maxPersen = 100;
+
+  List<int> get _percentages =>
+      List.generate((maxPersen ~/ kelipatan), (index) => (index + 1) * kelipatan);
 
   @override
   void initState() {
     super.initState();
-    // Tidak perlu kirim poin saat initState!
+    _initializeValues();
   }
 
-  /// Fungsi ini akan dipanggil saat member membeli barang
+  void _initializeValues() {
+    // Ambil kelipatan & presentase dari data Supabase untuk member ini
+    setState(() {
+      kelipatan = widget.data['kelipatan'] ?? 10;
+      _selectedPercentage = widget.data['presentase'] ?? kelipatan;
+    });
+  }
+
+  Future<void> _updateKelipatanDanPersentase() async {
+  final id = widget.data['id'];
+  final now = DateTime.now().toUtc().toIso8601String(); // waktu sekarang UTC
+
+  final response = await Supabase.instance.client
+      .from('members')
+      .update({
+        'kelipatan': kelipatan,
+        'presentase': _selectedPercentage,
+        'updated_at': now,  // penting supaya urutan berubah saat fetch ulang
+      })
+      .eq('id', id);
+
+  if (response.error != null) {
+    // kalau ingin, bisa tangani error di sini
+    print('Gagal update data: ${response.error!.message}');
+  }
+}
+
+
   void prosesTransaksi(int totalPoin) {
     int poinAffiliate = totalPoin;
-    int poinUntukMember = ((poinAffiliate * _selectedPercentage) / 100).round();
+    int poinUntukMember =
+        ((poinAffiliate * _selectedPercentage) / 100).round();
     int sisaPoinAffiliate = poinAffiliate - poinUntukMember;
 
-    // Simulasi proses kirim
     print('✅ Member membeli barang!');
     print('Affiliate menerima: $poinAffiliate poin');
-    print('Mengirim $_selectedPercentage% poin ke member: $poinUntukMember poin');
+    print('Mengirim $_selectedPercentage% poin ke member: $poinUntukMember');
     print('Sisa poin affiliate: $sisaPoinAffiliate');
 
-    // Tampilkan snackbar
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Mengirim $poinUntukMember poin ke member (${_selectedPercentage}%)')),
+      SnackBar(
+        content: Text(
+            'Mengirim $poinUntukMember poin ke member ($_selectedPercentage%)'),
+      ),
     );
   }
 
@@ -45,9 +79,6 @@ class _DetailMemberScreenState extends State<DetailMemberScreen> {
     final email = user['email'] ?? '-';
     final status = widget.data['status'] ?? 'Aktif';
     final phone = user['phone'] ?? '-';
-    final komisi = widget.data['komisi'] ?? 0;
-    final referral = widget.data['referral'] ?? 0;
-    final poin = widget.data['poin'] ?? 0;
 
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 245, 245, 245),
@@ -82,190 +113,160 @@ class _DetailMemberScreenState extends State<DetailMemberScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ================== Card Profile =====================
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      const CircleAvatar(
-                        radius: 30,
-                        backgroundImage: AssetImage('assets/icons/avatar.png'),
-                      ),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            name,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.green[100],
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              status,
-                              style: const TextStyle(
-                                  color: Colors.green, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      const Icon(Icons.email, size: 16),
-                      const SizedBox(width: 8),
-                      Text(email),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      const Icon(Icons.phone, size: 16),
-                      const SizedBox(width: 8),
-                      Text(phone),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
+            _buildProfileCard(name, email, status, phone),
             const SizedBox(height: 16),
-
-            // ================== Card Info Komisi =====================
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      children: [
-                        const Text('Total Komisi', style: TextStyle(fontSize: 14)),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Rp. ${komisi.toString()}',
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold, color: Colors.green),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    width: 1,
-                    height: 40,
-                    color: Colors.grey[400],
-                  ),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        const Text('Referral', style: TextStyle(fontSize: 14)),
-                        const SizedBox(height: 4),
-                        Text(
-                          referral.toString(),
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
+            _buildPointSection(),
             const SizedBox(height: 16),
-
-            // ================== Pilihan Point =====================
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Berikan Point',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 12,
-                    children: _percentages.map((percent) {
-                      final isSelected = _selectedPercentage == percent;
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _selectedPercentage = percent;
-                          });
-                          // Tidak kirim poin di sini!
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Persentase kirim poin diubah ke $percent%')),
-                          );
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.black26),
-                            borderRadius: BorderRadius.circular(8),
-                            color: isSelected ? Colors.green[100] : Colors.white,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.green.withOpacity(0.1),
-                                spreadRadius: 1,
-                                blurRadius: 5,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Text(
-                            '$percent%',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w500,
-                              color: Colors.black87,
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // ================== Riwayat Transaksi =====================
             const Text('Riwayat Transaksi',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 8),
-            _buildTransactionItem('17 Maret 2025', '5000 points', 'Tertunda', Colors.red),
-            _buildTransactionItem('16 Maret 2025', '5000 points', 'Sukses', Colors.green),
-            _buildTransactionItem('15 Maret 2025', '5000 points', 'Sukses', Colors.green),
-
+            _buildTransactionItem(
+                '17 Maret 2025', '5000 points', 'Tertunda', Colors.red),
+            _buildTransactionItem(
+                '16 Maret 2025', '5000 points', 'Sukses', Colors.green),
+            _buildTransactionItem(
+                '15 Maret 2025', '5000 points', 'Sukses', Colors.green),
             const SizedBox(height: 32),
-
-                      ],
+          ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildProfileCard(
+      String name, String email, String status, String phone) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              const CircleAvatar(
+                radius: 30,
+                backgroundImage: AssetImage('assets/icons/avatar.png'),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.green[100],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      status,
+                      style: const TextStyle(
+                          color: Colors.green, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              const Icon(Icons.email, size: 16),
+              const SizedBox(width: 8),
+              Text(email),
+            ],
+          ),
+          Row(
+            children: [
+              const Icon(Icons.phone, size: 16),
+              const SizedBox(width: 8),
+              Text(phone),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPointSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Berikan Point',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          const SizedBox(height: 12),
+
+          // Kelipatan
+          Row(
+            children: [
+              const Text("Kelipatan: "),
+              const SizedBox(width: 8),
+              DropdownButton<int>(
+                value: kelipatan,
+                items: [5, 10, 20, 25].map((k) {
+                  return DropdownMenuItem(
+                    value: k,
+                    child: Text('$k%'),
+                  );
+                }).toList(),
+                onChanged: (val) {
+                  if (val != null) {
+                    setState(() {
+                      kelipatan = val;
+                      _selectedPercentage = val; // reset persentase
+                    });
+                    _updateKelipatanDanPersentase();
+                  }
+                },
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Persentase
+          DropdownButtonFormField<int>(
+            value: _selectedPercentage,
+            decoration: InputDecoration(
+              labelText: 'Pilih Presentase',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+            ),
+            items: _percentages.map((percent) {
+              return DropdownMenuItem(
+                value: percent,
+                child: Text('$percent %'),
+              );
+            }).toList(),
+            onChanged: (value) {
+              if (value != null) {
+                setState(() {
+                  _selectedPercentage = value;
+                });
+                _updateKelipatanDanPersentase();
+              }
+            },
+          ),
+        ],
       ),
     );
   }
@@ -282,7 +283,8 @@ class _DetailMemberScreenState extends State<DetailMemberScreen> {
             children: [
               Text(date, style: const TextStyle(color: Colors.grey)),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: statusColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),

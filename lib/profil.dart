@@ -31,6 +31,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   int _currentIndex = 3;
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _referralCodeController = TextEditingController();
+
   late Future<void> _userFuture;
   File? _pickedImage;
 
@@ -52,13 +54,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _fetchUserData() async {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user != null) {
-      final metadata = user.userMetadata ?? {};
-      _nameController.text = metadata['username'] ?? 'Nama Tidak Diketahui';
-      _emailController.text = user.email ?? 'Email Tidak Diketahui';
+  final user = Supabase.instance.client.auth.currentUser;
+  if (user != null) {
+    final metadata = user.userMetadata ?? {};
+    _nameController.text = metadata['username'] ?? 'Nama Tidak Diketahui';
+    _emailController.text = user.email ?? 'Email Tidak Diketahui';
+
+    final response = await Supabase.instance.client
+        .from('affiliates')
+        .select('referral_code')
+        .eq('id_user', user.id)
+        .maybeSingle();
+
+    if (response != null && response['referral_code'] != null) {
+      _referralCodeController.text = response['referral_code'];
+    } else {
+      _referralCodeController.text = 'Tidak tersedia';
     }
   }
+}
+
 
  Future<void> _logout() async {
   await Supabase.instance.client.auth.signOut();
@@ -180,15 +195,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 16),
             buildProfileSection(
-              title: 'Informasi akun',
-              child: Column(
-                children: [
-                  buildTextField('Full Name', _nameController),
-                  const SizedBox(height: 8),
-                  buildTextField('Email', _emailController),
-                ],
-              ),
-            ),
+  title: 'Informasi akun',
+  child: Column(
+    children: [
+      buildTextField('Full Name', _nameController),
+      const SizedBox(height: 8),
+      buildTextField('Email', _emailController),
+      const SizedBox(height: 8),
+      buildTextField('Kode Referral', _referralCodeController),
+    ],
+  ),
+),
+
             const SizedBox(height: 12),
             buildProfileSection(
               title: 'Keamanan',

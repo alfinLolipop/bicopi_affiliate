@@ -35,6 +35,10 @@ dependencies:
   curved_navigation_bar: ^1.0.3
   supabase_flutter: ^2.5.5
   image_picker: ^0.8.5+3 
+  shared_preferences: ^2.2.2
+  week_of_year: ^2.2.0
+
+
     
 
   # The following adds the Cupertino Icons font to your application.
