@@ -9,6 +9,7 @@ import 'notifikasi.dart';
 import 'profil.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:week_of_year/week_of_year.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -128,7 +129,6 @@ class _HomeScreenState extends State<HomeScreen> {
   String _selectedFilter = 'Daily';
   String _userName = '...';
 
-
   @override
   void initState() {
     final user = Supabase.instance.client.auth.currentUser;
@@ -137,9 +137,64 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _getUserData();
     _fetchMembers();
+    _fetchChartData();
     _fetchTotalPoints();
     _fetchCommissionData();
   }
+
+  List<FlSpot> _chartData = [];
+
+  
+
+  Future<void> _fetchChartData() async {
+  final user = Supabase.instance.client.auth.currentUser;
+  if (user == null) return;
+
+  String dateTrunc = switch (_selectedFilter) {
+    'Weekly'  => 'week',
+    'Monthly' => 'month',
+    _         => 'day',
+  };
+
+  try {
+    final response = await Supabase.instance.client
+        .from('affiliate_points_log')
+        .select('created_at, points_earned')
+        .eq('affiliate_id', user.id)   // <-- pastikan kolom ini benar
+        .order('created_at', ascending: true);
+
+    // --- agregasi ----
+    final Map<String, double> grouped = {};
+    for (var item in response) {
+      final createdAt = DateTime.parse(item['created_at']);
+      final key = switch (dateTrunc) {
+        'week'  => '${createdAt.year}-${createdAt.weekOfYear}',
+        'month' => '${createdAt.year}-${createdAt.month}',
+        _       => '${createdAt.year}-${createdAt.month}-${createdAt.day}',
+      };
+      grouped[key] = (grouped[key] ?? 0) +
+          (item['points_earned'] as num).toDouble();
+    }
+
+    // ubah ke FlSpot
+    final sortedKeys = grouped.keys.toList()..sort();
+    final spots = <FlSpot>[
+      for (int i = 0; i < sortedKeys.length; i++)
+        FlSpot(i.toDouble(), grouped[sortedKeys[i]]!)
+    ];
+
+    setState(() {
+      _chartData = spots.isEmpty ? [const FlSpot(0, 0)] : spots;
+    });
+  } catch (e) {
+    print('Gagal mengambil data grafik: $e');
+    // tampilkan dummy juga saat error
+    setState(() {
+      _chartData = [const FlSpot(0, 0)];
+    });
+  }
+}
+
 
   Future<void> _getUserData() async {
     final user = Supabase.instance.client.auth.currentUser;
@@ -149,7 +204,7 @@ class _HomeScreenState extends State<HomeScreen> {
         final response = await Supabase.instance.client
             .from('users')
             .select('username')
-            .eq('id', user.id) // ganti jadi 'id' bukan 'id_user'
+            .eq('id_user', user.id) // ganti jadi 'id' bukan 'id_user'
             .maybeSingle();
 
         print('Data username: $response');
@@ -263,24 +318,50 @@ class _HomeScreenState extends State<HomeScreen> {
                               setState(() {
                                 _selectedFilter = newValue!;
                               });
+                              _fetchChartData(); // panggil ulang saat filter berubah
                             },
                           ),
                         ],
                       ),
                       SizedBox(height: 12),
                       Container(
-                        height: 120,
+                        height: 200,
+                        padding: EdgeInsets.symmetric(horizontal: 8),
                         decoration: BoxDecoration(
                           color: Colors.grey.shade100,
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Center(
-                          child: Text(
-                            'Tempat Grafik',
-                            style: GoogleFonts.poppins(
-                                fontSize: 14, color: Colors.grey),
-                          ),
-                        ),
+                        child: _chartData.isEmpty
+                            ? Center(
+                                child: Text('Tidak ada data',
+                                    style: GoogleFonts.poppins()))
+                            : LineChart(
+                                LineChartData(
+                                  titlesData: FlTitlesData(show: false),
+                                  borderData: FlBorderData(show: false),
+                                  gridData: FlGridData(show: false),
+                                  lineBarsData: [
+                                    LineChartBarData(
+                                      spots: _chartData,
+                                      isCurved: true,
+                                      color: Colors.green,
+                                      barWidth: 3,
+                                      isStrokeCapRound: true,
+                                      belowBarData: BarAreaData(
+                                        show: true,
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            Colors.green.withOpacity(0.4),
+                                            Colors.green.withOpacity(0.0),
+                                          ],
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                        ),
+                                      ),
+                                    )
+                                  ],
+                                ),
+                              ),
                       ),
                     ],
                   ),
@@ -396,7 +477,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           SizedBox(height: 12),
-          ..._members.map((member) => MemberItem(
+          ..._members.take(3).map((member) => MemberItem(
                 name: member['users']?['username'] ?? 'Tidak diketahui',
                 date: member['joined_at'] != null
                     ? member['joined_at'].toString().substring(0, 10)
