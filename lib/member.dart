@@ -66,12 +66,12 @@ class _MemberScreenState extends State<MemberScreen> {
       final affiliateId = affiliate['id'];
 
       // Ambil member yang hanya milik affiliate ini DAN urutkan dari yang terbaru
+      // PERUBAHAN DI SINI: Tambahkan 'photo_url'
       final response = await Supabase.instance.client
           .from('members')
-          .select('*, users (username, email, phone)')
+          .select('*, users (username, email, phone, photo_url)') // <--- DITAMBAHKAN photo_url DI SINI
           .eq('affiliate_id', affiliateId)
           .order('joined_at', ascending: false); // <- ini kunci utama
-          
 
       final data = response as List;
 
@@ -136,7 +136,7 @@ class _MemberScreenState extends State<MemberScreen> {
         child: Column(
           children: [
             TextField(
-              onChanged: _filterMembers, // <- Tambahkan ini
+              onChanged: _filterMembers,
               decoration: InputDecoration(
                 hintText: "Cari berdasarkan nama",
                 prefixIcon: Icon(Icons.search, color: Colors.grey),
@@ -163,9 +163,20 @@ class _MemberScreenState extends State<MemberScreen> {
                         final user = member['users'];
                         final name = user?['username'] ?? 'Tidak diketahui';
                         final email = user?['email'] ?? '-';
+                        // Ambil photo_url, fallback ke 'assets/icons/avatar.png'
+                        final photoUrl = user?['photo_url'] ?? 'assets/icons/avatar.png'; // <--- DITAMBAHKAN INI
+
                         final joinedAt = member['joined_at'] != null
                             ? DateTime.parse(member['joined_at'])
                             : null;
+
+                        // LOGIKA UNTUK MENENTUKAN IMAGEPROVIDER DITAMBAHKAN DI SINI
+                        ImageProvider memberImageProvider;
+                        if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://')) {
+                          memberImageProvider = NetworkImage(photoUrl);
+                        } else {
+                          memberImageProvider = AssetImage(photoUrl);
+                        }
 
                         return GestureDetector(
                           onTap: () async {
@@ -207,8 +218,12 @@ class _MemberScreenState extends State<MemberScreen> {
                               children: [
                                 CircleAvatar(
                                   radius: 24,
-                                  backgroundImage:
-                                      AssetImage('assets/icons/avatar.png'),
+                                  // GUNAKAN memberImageProvider DI SINI
+                                  backgroundImage: memberImageProvider, // <--- DIGANTI DI SINI
+                                  backgroundColor: Colors.grey.shade200, // Optional: Latar belakang jika gambar belum dimuat
+                                  child: memberImageProvider is NetworkImage && photoUrl.isEmpty // <--- Opsional: placeholder jika URL kosong
+                                      ? const Icon(Icons.person, color: Colors.grey)
+                                      : null,
                                 ),
                                 SizedBox(width: 12),
                                 Expanded(
@@ -224,7 +239,8 @@ class _MemberScreenState extends State<MemberScreen> {
                                       ),
                                       Text(
                                         email,
-                                        style: TextStyle(color: Colors.black54),
+                                        style:
+                                            TextStyle(color: Colors.black54),
                                       ),
                                       SizedBox(height: 4),
                                       Text(

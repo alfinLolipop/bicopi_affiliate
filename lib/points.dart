@@ -1,26 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'home.dart';
-import 'points.dart';
 import 'popup.dart';
 import 'notifikasi.dart';
 import 'profil.dart';
-
-void main() {
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: const PointsScreen(),
-    );
-  }
-}
 
 class PointsScreen extends StatefulWidget {
   const PointsScreen({super.key});
@@ -31,14 +16,66 @@ class PointsScreen extends StatefulWidget {
 
 class _PointsScreen extends State<PointsScreen> {
   int _currentIndex = 1;
-  int currentPoints = 2500;
+  int? currentPoints;
+  List<Map<String, dynamic>> rewards = [];
+  bool isLoading = true;
 
-  final List<Map<String, dynamic>> rewards = [
-    {"title": "Gratis Kopi", "points": 150},
-    {"title": "Gratis Kopi", "points": 200},
-    {"title": "Gratis Kopi", "points": 250},
-    {"title": "Gratis Kopi", "points": 300},
-  ];
+  @override
+  void initState() {
+    super.initState();
+    fetchAllData();
+  }
+
+  Future<void> fetchAllData() async {
+    await fetchPointsFromSupabase();
+    await fetchRewardsFromSupabase();
+    setState(() {
+      isLoading = false;
+    });
+  }
+
+  Future<void> fetchPointsFromSupabase() async {
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) return;
+
+      final response = await Supabase.instance.client
+          .from('affiliates')
+          .select('total_points')
+          .eq('id_user', user.id)
+          .maybeSingle();
+
+      if (response != null && response['total_points'] != null) {
+        setState(() {
+          currentPoints = response['total_points'];
+        });
+      }
+    } catch (e) {
+      print('Error fetching points: $e');
+    }
+  }
+
+  Future<void> fetchRewardsFromSupabase() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('klaim_rewards')
+          .select();
+
+      print('Response klaim_rewards: $response');
+
+      setState(() {
+        rewards = List<Map<String, dynamic>>.from(response).map((r) {
+          return {
+            "title": r['judul'] ?? '',
+            "description": r['deskripsi'] ?? '',
+            "points": r['points'] ?? 0,
+          };
+        }).toList();
+      });
+    } catch (e) {
+      print('Error fetching rewards: $e');
+    }
+  }
 
   void _onTabTapped(int index) {
     setState(() {
@@ -49,7 +86,7 @@ class _PointsScreen extends State<PointsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color.fromARGB(255, 255, 255, 255),
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
@@ -71,56 +108,55 @@ class _PointsScreen extends State<PointsScreen> {
           ),
         ),
       ),
-      body: Column(
-        children: [
-          // Kotak "Point Saat Ini"
-          Container(
-            margin: const EdgeInsets.all(16),
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(color: Colors.black12, blurRadius: 6, spreadRadius: 1),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
               children: [
-                const Text(
-                  "Point Saat Ini",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                Container(
+                  margin: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black12, blurRadius: 6, spreadRadius: 1),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Point Saat Ini",
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        currentPoints != null ? "$currentPoints" : "0",
+                        style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.green),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  "$currentPoints",
-                  style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.green),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  "1 poin = Rp1",
-                  style: TextStyle(fontSize: 12, color: Colors.black54),
+                Expanded(
+                  child: rewards.isEmpty
+                      ? const Center(child: Text("Tidak ada reward tersedia"))
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: rewards.length,
+                          itemBuilder: (context, index) {
+                            final reward = rewards[index];
+                            return _buildRewardCard(
+                              context,
+                              reward["title"],
+                              reward["description"],
+                              reward["points"],
+                            );
+                          },
+                        ),
                 ),
               ],
             ),
-          ),
-
-          // ListView Rewards
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: rewards.length,
-              itemBuilder: (context, index) {
-                final reward = rewards[index];
-                return _buildRewardCard(context, reward["title"], reward["points"]);
-              },
-            ),
-          ),
-        ],
-      ),
-
-      // Bottom Navigation Bar
       bottomNavigationBar: BottomNavigationBar(
         backgroundColor: Colors.white,
         type: BottomNavigationBarType.fixed,
@@ -129,10 +165,6 @@ class _PointsScreen extends State<PointsScreen> {
         currentIndex: _currentIndex,
         onTap: (index) {
           if (index != _currentIndex) {
-            setState(() {
-              _currentIndex = index;
-            });
-
             Widget nextScreen;
             if (index == 0) {
               nextScreen = const HomeScreen();
@@ -160,7 +192,7 @@ class _PointsScreen extends State<PointsScreen> {
     );
   }
 
-  Widget _buildRewardCard(BuildContext context, String title, int points) {
+  Widget _buildRewardCard(BuildContext context, String title, String description, int points) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -176,7 +208,7 @@ class _PointsScreen extends State<PointsScreen> {
         children: [
           Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
-          const Text("Dapatkan kopi reguler gratis di lokasi kami", style: TextStyle(color: Colors.black54)),
+          Text(description, style: const TextStyle(color: Colors.black54)),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -190,7 +222,9 @@ class _PointsScreen extends State<PointsScreen> {
                 child: Text("$points Points", style: const TextStyle(fontWeight: FontWeight.bold)),
               ),
               ElevatedButton(
-                onPressed: () => showRedeemDialog(context, title, points),
+                onPressed: currentPoints != null && currentPoints! >= points
+                    ? () => showRedeemDialog(context, title, points)
+                    : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -205,7 +239,7 @@ class _PointsScreen extends State<PointsScreen> {
   }
 
   void showRedeemDialog(BuildContext context, String title, int points) {
-    if (currentPoints < points) {
+    if (currentPoints! < points) {
       showDialog(
         context: context,
         builder: (context) {
@@ -236,24 +270,39 @@ class _PointsScreen extends State<PointsScreen> {
               child: const Text("Batal"),
             ),
             TextButton(
-              onPressed: () {
+              onPressed: () async {
                 Navigator.pop(context);
+                final user = Supabase.instance.client.auth.currentUser;
 
-                setState(() {
-                  currentPoints -= points;
-                });
+                if (user != null) {
+                  int updatedPoints = currentPoints! - points;
+                  try {
+                    // Update ke Supabase
+                    await Supabase.instance.client
+                        .from('affiliates')
+                        .update({'total_points': updatedPoints})
+                        .eq('id_user', user.id);
 
-                String transactionId = generateUniqueId();
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => PopupPage(
-                      title: title,
-                      points: points,
-                      transactionId: transactionId,
+                    setState(() {
+                      currentPoints = updatedPoints;
+                    });
+                  } catch (e) {
+                    print('Error updating points: $e');
+                    // Tambahkan notifikasi error kalau mau
+                  }
+
+                  String transactionId = generateUniqueId();
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => PopupPage(
+                        title: title,
+                        points: points,
+                        transactionId: transactionId,
+                      ),
                     ),
-                  ),
-                );
+                  );
+                }
               },
               child: const Text("Ya"),
             ),

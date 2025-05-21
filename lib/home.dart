@@ -11,6 +11,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:week_of_year/week_of_year.dart';
 
+
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Supabase.initialize(
@@ -85,15 +87,25 @@ class _HomeScreenState extends State<HomeScreen> {
         final affiliateId = affiliate['id'];
 
         // Ambil hanya member yang affiliate_id = affiliateId
-        final response = await Supabase.instance.client
-            .from('members')
-            .select('id_user, joined_at, users(username)')
-            .eq('affiliate_id', affiliateId)
-            .order('joined_at', ascending: false);
+        // Di dalam _fetchMembers()
+final response = await Supabase.instance.client
+    .from('members')
+    .select('id_user, joined_at, users(username, photo_url)')
+    .eq('affiliate_id', affiliateId)
+    .order('joined_at', ascending: false);
 
-        setState(() {
-          _members = List<Map<String, dynamic>>.from(response);
-        });
+print('RAW Response from Supabase: $response'); // Periksa seluruh respons
+
+setState(() {
+  _members = List<Map<String, dynamic>>.from(response);
+});
+
+// Tambahkan loop untuk memeriksa setiap anggota
+for (var member in _members) {
+  final String? photoUrl = member['users']?['photo_url'];
+  final String? username = member['users']?['username'];
+  print('Member: $username, Photo URL: $photoUrl'); // Cetak URL yang diterima
+}
       } catch (e) {
         print('Gagal mengambil data members: $e');
       }
@@ -157,13 +169,26 @@ class _HomeScreenState extends State<HomeScreen> {
   };
 
   try {
+    // Ambil ID affiliate berdasarkan id_user
+    final affiliate = await Supabase.instance.client
+        .from('affiliates')
+        .select('id')
+        .eq('id_user', user.id)
+        .maybeSingle();
+
+    if (affiliate == null) {
+      print('Affiliate tidak ditemukan');
+      return;
+    }
+
+    final affiliateId = affiliate['id'];
+
     final response = await Supabase.instance.client
         .from('affiliate_points_log')
         .select('created_at, points_earned')
-        .eq('affiliate_id', user.id)   // <-- pastikan kolom ini benar
+        .eq('affiliate_id', affiliateId)
         .order('created_at', ascending: true);
 
-    // --- agregasi ----
     final Map<String, double> grouped = {};
     for (var item in response) {
       final createdAt = DateTime.parse(item['created_at']);
@@ -176,7 +201,6 @@ class _HomeScreenState extends State<HomeScreen> {
           (item['points_earned'] as num).toDouble();
     }
 
-    // ubah ke FlSpot
     final sortedKeys = grouped.keys.toList()..sort();
     final spots = <FlSpot>[
       for (int i = 0; i < sortedKeys.length; i++)
@@ -188,12 +212,12 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   } catch (e) {
     print('Gagal mengambil data grafik: $e');
-    // tampilkan dummy juga saat error
     setState(() {
       _chartData = [const FlSpot(0, 0)];
     });
   }
 }
+
 
 
   Future<void> _getUserData() async {
@@ -333,7 +357,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         child: _chartData.isEmpty
                             ? Center(
-                                child: Text('Tidak ada data',
+                               child: Text('Tidak ada data',
                                     style: GoogleFonts.poppins()))
                             : LineChart(
                                 LineChartData(
@@ -375,6 +399,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
+        backgroundColor: Colors.white,
         selectedItemColor: Colors.green,
         unselectedItemColor: Colors.grey,
         currentIndex: _currentIndex,
@@ -482,7 +507,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 date: member['joined_at'] != null
                     ? member['joined_at'].toString().substring(0, 10)
                     : 'Tidak diketahui',
-                image: 'assets/profil.png',
+                image: member['users']?['photo_url'] ?? 'assets/profil.png', // <--- BARIS YANG DIMODIFIKASI
               )),
           SizedBox(height: 16),
           SizedBox(
@@ -520,13 +545,37 @@ class MemberItem extends StatelessWidget {
   final String date;
   final String image;
 
-  const MemberItem(
-      {required this.name, required this.date, required this.image, super.key});
+  const MemberItem({
+    Key? key, // Pastikan Key? key ada di constructor
+    required this.name,
+    required this.date,
+    required this.image,
+  }) : super(key: key); // Pastikan super(key: key) ada di constructor
 
   @override
   Widget build(BuildContext context) {
+    // BARIS PRINT YANG ANDA MINTA, DITARUH DI SINI
+    print('MemberItem: Name: $name, Image Path/URL: $image');
+
+    ImageProvider imageProvider;
+    // LOGIKA UNTUK MEMILIH ANTARA NetworkImage ATAU AssetImage
+    if (image.startsWith('http://') || image.startsWith('https://')) {
+      imageProvider = NetworkImage(image);
+    } else {
+      imageProvider = AssetImage(image);
+    }
+
     return ListTile(
-      leading: CircleAvatar(radius: 20, backgroundImage: AssetImage(image)),
+      leading: CircleAvatar(
+        radius: 20,
+        // GUNAKAN imageProvider DI SINI
+        backgroundImage: imageProvider,
+        backgroundColor: Colors.grey.shade200, // Warna latar belakang jika gambar tidak ada
+        // Optional: Tambahkan ikon placeholder jika URL kosong dan itu NetworkImage
+        child: imageProvider is NetworkImage && image.isEmpty
+            ? const Icon(Icons.person, color: Colors.grey)
+            : null,
+      ),
       title: Text(
         name,
         style: GoogleFonts.poppins(
