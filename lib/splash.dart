@@ -2,45 +2,40 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';  // Impor Supabase
 import 'fleksibel_praktis.dart'; // Impor halaman tujuan
 import 'login.dart'; // Impor halaman login jika perlu
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
-
   @override
   _SplashScreenState createState() => _SplashScreenState();
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  Future<void> checkFirstLaunchAndAuth() async {
+    final prefs = await SharedPreferences.getInstance();
+    final isFirstLaunch = prefs.getBool('isFirstLaunch') ?? true;
+    final user = Supabase.instance.client.auth.currentUser;
+
+    await Future.delayed(Duration(seconds: 2)); // Delay splash
+
+    if (user != null) {
+      // Sudah login
+      Navigator.pushReplacementNamed(context, '/home');
+    } else if (isFirstLaunch) {
+      // Pertama kali buka
+      await prefs.setBool('isFirstLaunch', false);
+      Navigator.pushReplacementNamed(context, '/fleksibel_praktis');
+    } else {
+      // Sudah pernah buka, tapi belum login
+      Navigator.pushReplacementNamed(context, '/login');
+    }
+  }
+
   @override
   void initState() {
     super.initState();
-    _checkLoginStatus();
+    checkFirstLaunchAndAuth();
   }
-
-  // Fungsi untuk mengecek status login
-  Future<void> _checkLoginStatus() async {
-  final session = Supabase.instance.client.auth.currentSession;
-
-  await Future.delayed(const Duration(seconds: 3));
-
-  if (mounted) {
-    if (session != null && session.user != null) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const FleksibelPraktisScreen(),
-        ),
-      );
-    } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const LoginScreen(),
-        ),
-      );
-    }
-  }
-}
 
 
   @override

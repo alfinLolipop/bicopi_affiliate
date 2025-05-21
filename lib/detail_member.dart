@@ -12,21 +12,69 @@ class DetailMemberScreen extends StatefulWidget {
 }
 
 class _DetailMemberScreenState extends State<DetailMemberScreen> {
-  int kelipatan = 10;
-  int _selectedPercentage = 10;
-  final int maxPersen = 100;
-
-  List<int> get _percentages =>
-      List.generate((maxPersen ~/ kelipatan), (index) => (index + 1) * kelipatan);
+  List<Map<String, dynamic>> _riwayatTransaksi = [];
+  bool _isLoadingRiwayat = true;
 
   @override
   void initState() {
     super.initState();
     _initializeValues();
+    _fetchRiwayatTransaksi();
   }
 
+  Future<void> _fetchRiwayatTransaksi() async {
+    final memberId = widget.data['id'];
+
+    try {
+      final response = await Supabase.instance.client
+          .from('member_points_log')
+          .select()
+          .eq('member_id', memberId)
+          .order('created_at', ascending: false);
+
+      if (mounted) {
+        setState(() {
+          _riwayatTransaksi = List<Map<String, dynamic>>.from(response);
+          _isLoadingRiwayat = false;
+        });
+      }
+    } catch (e) {
+      print('Gagal mengambil riwayat transaksi: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingRiwayat = false;
+        });
+      }
+    }
+  }
+
+  String _getNamaBulan(int bulan) {
+    const bulanIndo = [
+      '', // index ke-0 tidak dipakai
+      'Januari',
+      'Februari',
+      'Maret',
+      'April',
+      'Mei',
+      'Juni',
+      'Juli',
+      'Agustus',
+      'September',
+      'Oktober',
+      'November',
+      'Desember'
+    ];
+    return bulanIndo[bulan];
+  }
+
+  int kelipatan = 10;
+  int _selectedPercentage = 10;
+  final int maxPersen = 100;
+
+  List<int> get _percentages => List.generate(
+      (maxPersen ~/ kelipatan), (index) => (index + 1) * kelipatan);
+
   void _initializeValues() {
-    // Ambil kelipatan & presentase dari data Supabase untuk member ini
     setState(() {
       kelipatan = widget.data['kelipatan'] ?? 10;
       _selectedPercentage = widget.data['presentase'] ?? kelipatan;
@@ -34,29 +82,26 @@ class _DetailMemberScreenState extends State<DetailMemberScreen> {
   }
 
   Future<void> _updateKelipatanDanPersentase() async {
-  final id = widget.data['id'];
-  final now = DateTime.now().toUtc().toIso8601String(); // waktu sekarang UTC
+    final id = widget.data['id'];
+    final now = DateTime.now().toUtc().toIso8601String();
 
-  final response = await Supabase.instance.client
-      .from('members')
-      .update({
-        'kelipatan': kelipatan,
-        'presentase': _selectedPercentage,
-        'updated_at': now,  // penting supaya urutan berubah saat fetch ulang
-      })
-      .eq('id', id);
+    final response = await Supabase.instance.client.from('members').update({
+      'kelipatan': kelipatan,
+      'presentase': _selectedPercentage,
+      'updated_at': now,
+    }).eq('id', id);
 
-  if (response.error != null) {
-    // kalau ingin, bisa tangani error di sini
-    print('Gagal update data: ${response.error!.message}');
+    // Gunakan response.hasError untuk penanganan error yang lebih baik
+    if (response.hasError) {
+      print('Gagal update data: ${response.error!.message}');
+    } else {
+      print('Kelipatan dan presentase berhasil diupdate.');
+    }
   }
-}
-
 
   void prosesTransaksi(int totalPoin) {
     int poinAffiliate = totalPoin;
-    int poinUntukMember =
-        ((poinAffiliate * _selectedPercentage) / 100).round();
+    int poinUntukMember = ((poinAffiliate * _selectedPercentage) / 100).round();
     int sisaPoinAffiliate = poinAffiliate - poinUntukMember;
 
     print('✅ Member membeli barang!');
@@ -79,6 +124,17 @@ class _DetailMemberScreenState extends State<DetailMemberScreen> {
     final email = user['email'] ?? '-';
     final status = widget.data['status'] ?? 'Aktif';
     final phone = user['phone'] ?? '-';
+    // Ambil photo_url dari data user
+    final photoUrl = user['photo_url'] ?? ''; // Jika null, gunakan string kosong
+
+    // Tentukan ImageProvider berdasarkan apakah photoUrl adalah URL atau kosong
+    ImageProvider profileImageProvider;
+    if (photoUrl.isNotEmpty && (photoUrl.startsWith('http://') || photoUrl.startsWith('https://'))) {
+      profileImageProvider = NetworkImage(photoUrl);
+    } else {
+      // Fallback ke aset lokal jika photoUrl kosong atau bukan URL
+      profileImageProvider = const AssetImage('assets/icons/avatar.png');
+    }
 
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 245, 245, 245),
@@ -113,19 +169,35 @@ class _DetailMemberScreenState extends State<DetailMemberScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildProfileCard(name, email, status, phone),
+            // Teruskan profileImageProvider ke _buildProfileCard
+            _buildProfileCard(name, email, status, phone, profileImageProvider),
             const SizedBox(height: 16),
             _buildPointSection(),
             const SizedBox(height: 16),
-            const Text('Riwayat Transaksi',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const Text(
+              'Riwayat Transaksi',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
             const SizedBox(height: 8),
-            _buildTransactionItem(
-                '17 Maret 2025', '5000 points', 'Tertunda', Colors.red),
-            _buildTransactionItem(
-                '16 Maret 2025', '5000 points', 'Sukses', Colors.green),
-            _buildTransactionItem(
-                '15 Maret 2025', '5000 points', 'Sukses', Colors.green),
+            _isLoadingRiwayat
+                ? const Center(child: CircularProgressIndicator())
+                : _riwayatTransaksi.isEmpty
+                    ? const Text('Belum ada transaksi.')
+                    : Column(
+                        children: _riwayatTransaksi.map((log) {
+                          final dateTime = DateTime.parse(log['created_at']);
+                          final tanggal =
+                              '${dateTime.day} ${_getNamaBulan(dateTime.month)} ${dateTime.year}';
+                          final poin = log['points_earned'] ?? 0;
+
+                          return _buildTransactionItem(
+                            tanggal,
+                            '$poin poin',
+                            'Terkirim',
+                            Colors.green,
+                          );
+                        }).toList(),
+                      ),
             const SizedBox(height: 32),
           ],
         ),
@@ -133,8 +205,9 @@ class _DetailMemberScreenState extends State<DetailMemberScreen> {
     );
   }
 
+  // Tambahkan parameter ImageProvider ke _buildProfileCard
   Widget _buildProfileCard(
-      String name, String email, String status, String phone) {
+      String name, String email, String status, String phone, ImageProvider imageProvider) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -145,9 +218,12 @@ class _DetailMemberScreenState extends State<DetailMemberScreen> {
         children: [
           Row(
             children: [
-              const CircleAvatar(
+              CircleAvatar(
                 radius: 30,
-                backgroundImage: AssetImage('assets/icons/avatar.png'),
+                backgroundImage: imageProvider, // Gunakan ImageProvider di sini
+                backgroundColor: Colors.grey.shade200, // Background jika gambar belum dimuat
+                // Anda bisa menambahkan child Icon jika ingin menampilkan ikon placeholder
+                // misalnya: child: (imageProvider is NetworkImage && imageProvider.url.isEmpty) ? Icon(Icons.person) : null,
               ),
               const SizedBox(width: 12),
               Column(
@@ -161,8 +237,8 @@ class _DetailMemberScreenState extends State<DetailMemberScreen> {
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: Colors.green[100],
                       borderRadius: BorderRadius.circular(12),
@@ -283,8 +359,7 @@ class _DetailMemberScreenState extends State<DetailMemberScreen> {
             children: [
               Text(date, style: const TextStyle(color: Colors.grey)),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: statusColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),

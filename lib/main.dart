@@ -33,12 +33,17 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false, // Hilangkan label debug
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
-      home: const SplashScreen(), // SplashScreen akan ditampilkan pertama kali
+      title: 'Affiliate App',
+      initialRoute: '/',
+      routes: {
+        '/': (context) => SplashScreen(),
+        '/fleksibel_praktis': (context) => FleksibelPraktisScreen(),
+        '/reward_bonus': (context) => RewardBonusScreen(),
+        '/penghasilan_tambahan': (context) => PenghasilanTambahanScreen(),
+        '/login': (context) => LoginScreen(),
+        '/home': (context) => HomeScreen(),
+      },
+     
     );
   }
 }

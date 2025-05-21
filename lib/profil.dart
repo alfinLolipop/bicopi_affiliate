@@ -54,38 +54,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _fetchUserData() async {
-  final user = Supabase.instance.client.auth.currentUser;
-  if (user != null) {
-    final metadata = user.userMetadata ?? {};
-    _nameController.text = metadata['username'] ?? 'Nama Tidak Diketahui';
-    _emailController.text = user.email ?? 'Email Tidak Diketahui';
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user != null) {
+      final metadata = user.userMetadata ?? {};
+      _nameController.text = metadata['username'] ?? 'Nama Tidak Diketahui';
+      _emailController.text = user.email ?? 'Email Tidak Diketahui';
 
-    final response = await Supabase.instance.client
-        .from('affiliates')
-        .select('referral_code')
-        .eq('id_user', user.id)
-        .maybeSingle();
+      final response = await Supabase.instance.client
+          .from('affiliates')
+          .select('referral_code')
+          .eq('id_user', user.id)
+          .limit(1)
+          .maybeSingle();
 
-    if (response != null && response['referral_code'] != null) {
-      _referralCodeController.text = response['referral_code'];
-    } else {
-      _referralCodeController.text = 'Tidak tersedia';
+      if (response != null && response['referral_code'] != null) {
+        _referralCodeController.text = response['referral_code'];
+      } else {
+        _referralCodeController.text = 'Tidak tersedia';
+      }
     }
   }
-}
 
-
- Future<void> _logout() async {
-  await Supabase.instance.client.auth.signOut();
-  Navigator.pushAndRemoveUntil(
-    context,
-    MaterialPageRoute(
-      builder: (context) => const LogoutSuccessScreen(), // <- ganti ke sini
-    ),
-    (route) => false,
-  );
-}
-
+  Future<void> _logout() async {
+    await Supabase.instance.client.auth.signOut();
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const LogoutSuccessScreen(), // <- ganti ke sini
+      ),
+      (route) => false,
+    );
+  }
 
   Future<void> _pickProfileImage() async {
     final picker = ImagePicker();
@@ -153,7 +152,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       backgroundColor: Colors.grey[300],
                       backgroundImage: _pickedImage != null
                           ? FileImage(_pickedImage!)
-                          : const AssetImage('assets/profil.png') as ImageProvider,
+                          : const AssetImage('assets/profil.png')
+                              as ImageProvider,
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -169,8 +169,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           children: [
                             Text(_nameController.text,
                                 style: GoogleFonts.poppins(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600)),
+                                    fontSize: 16, fontWeight: FontWeight.w600)),
                             Text(_emailController.text,
                                 style: GoogleFonts.poppins(
                                     fontSize: 13, color: Colors.grey[700])),
@@ -195,25 +194,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 16),
             buildProfileSection(
-  title: 'Informasi akun',
-  child: Column(
-    children: [
-      buildTextField('Full Name', _nameController),
-      const SizedBox(height: 8),
-      buildTextField('Email', _emailController),
-      const SizedBox(height: 8),
-      buildTextField('Kode Referral', _referralCodeController),
-    ],
-  ),
-),
-
+              title: 'Informasi akun',
+              child: Column(
+                children: [
+                  buildTextField('Full Name', _nameController),
+                  const SizedBox(height: 8),
+                  buildTextField('Email', _emailController),
+                  const SizedBox(height: 8),
+                  buildTextField('Kode Referral', _referralCodeController),
+                ],
+              ),
+            ),
             const SizedBox(height: 12),
             buildProfileSection(
               title: 'Keamanan',
               child: ListTile(
                 contentPadding: EdgeInsets.zero,
-                title:
-                    Text('Ubah Password', style: GoogleFonts.poppins(fontSize: 14)),
+                title: Text('Ubah Password',
+                    style: GoogleFonts.poppins(fontSize: 14)),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => Navigator.push(
                     context,
@@ -328,7 +326,8 @@ class TermsAndConditionsScreen extends StatefulWidget {
   const TermsAndConditionsScreen({super.key});
 
   @override
-  State<TermsAndConditionsScreen> createState() => _TermsAndConditionsScreenState();
+  State<TermsAndConditionsScreen> createState() =>
+      _TermsAndConditionsScreenState();
 }
 
 class _TermsAndConditionsScreenState extends State<TermsAndConditionsScreen> {
@@ -368,7 +367,8 @@ class _TermsAndConditionsScreenState extends State<TermsAndConditionsScreen> {
                 ElevatedButton(
                   onPressed: () => _toggleLanguage(false),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: !_isIndonesian ? Colors.green : Colors.grey,
+                    backgroundColor:
+                        !_isIndonesian ? Colors.green : Colors.grey,
                   ),
                   child: const Text('English 🇬🇧'),
                 ),
@@ -403,8 +403,8 @@ class _TermsAndConditionsScreenState extends State<TermsAndConditionsScreen> {
             'Terbuka untuk individu atau badan usaha...'),
         _buildTermsItem('3. Tautan Afiliasi dan Materi Promosi',
             'Afiliasi akan menerima tautan afiliasi unik...'),
-        _buildTermsItem('4. Komisi',
-            'Afiliasi akan mendapatkan komisi sebesar [xx]%...'),
+        _buildTermsItem(
+            '4. Komisi', 'Afiliasi akan mendapatkan komisi sebesar [xx]%...'),
         _buildTermsItem('5. Pelaporan dan Pembayaran',
             'Data transaksi tersedia di dashboard...'),
         _buildTermsItem('6. Kewajiban Afiliasi',
@@ -424,8 +424,8 @@ class _TermsAndConditionsScreenState extends State<TermsAndConditionsScreen> {
             'Open to individuals or entities with digital platforms...'),
         _buildTermsItem('3. Affiliate Links and Promotional Materials',
             'Affiliates will receive a unique affiliate link...'),
-        _buildTermsItem('4. Commission',
-            'Affiliates will earn a commission of [xx]%...'),
+        _buildTermsItem(
+            '4. Commission', 'Affiliates will earn a commission of [xx]%...'),
         _buildTermsItem('5. Reporting and Payment',
             'Transaction data is available on the dashboard...'),
         _buildTermsItem('6. Affiliate Obligations',
