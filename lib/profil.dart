@@ -45,7 +45,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-              builder: (context) => const VerifikasiEmailScreen(email: '')),
+              builder: (context) => const VerifikasiEmailScreen(email: '')
+          ),
         );
       });
     } else {
@@ -80,7 +81,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(
-        builder: (context) => const LogoutSuccessScreen(), // <- ganti ke sini
+        builder: (context) => const LogoutSuccessScreen(), 
       ),
       (route) => false,
     );
@@ -224,7 +225,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               title: 'Tentang Aplikasi',
               child: ListTile(
                 contentPadding: EdgeInsets.zero,
-                title: Text('Syarat & Ketentuan',
+                title: Text('Panduan Pengguna',
                     style: GoogleFonts.poppins(fontSize: 14)),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => Navigator.push(
@@ -344,7 +345,7 @@ class _TermsAndConditionsScreenState extends State<TermsAndConditionsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          _isIndonesian ? 'Syarat & Ketentuan' : 'Terms & Conditions',
+          _isIndonesian ? 'Panduan Pengguna' : 'User Guide',
           style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
         ),
         backgroundColor: Colors.green,
@@ -396,47 +397,65 @@ class _TermsAndConditionsScreenState extends State<TermsAndConditionsScreen> {
     );
   }
 
-  List<Widget> _buildTermsIndo() => [
-        _buildTermsItem('1. Pendaftaran Program',
-            'Setiap calon afiliasi harus mengisi formulir pendaftaran...'),
-        _buildTermsItem('2. Kualifikasi Afiliasi',
-            'Terbuka untuk individu atau badan usaha...'),
-        _buildTermsItem('3. Tautan Afiliasi dan Materi Promosi',
-            'Afiliasi akan menerima tautan afiliasi unik...'),
-        _buildTermsItem(
-            '4. Komisi', 'Afiliasi akan mendapatkan komisi sebesar [xx]%...'),
-        _buildTermsItem('5. Pelaporan dan Pembayaran',
-            'Data transaksi tersedia di dashboard...'),
-        _buildTermsItem('6. Kewajiban Afiliasi',
-            'Afiliasi wajib memberikan informasi yang benar...'),
-        _buildTermsItem('7. Hak BiCOPI',
-            'BiCOPI berhak memperbarui, menghentikan, atau mengubah...'),
-        _buildTermsItem('8. Batasan Tanggung Jawab',
-            'BiCOPI tidak bertanggung jawab atas kerugian...'),
-        _buildTermsItem('9. Ketentuan Umum',
-            'Dengan mengikuti program ini, afiliasi menyetujui tunduk pada hukum...'),
-      ];
+ List<Widget> _buildTermsIndo() => [
+          _buildTermsItem('📘 Panduan Pengguna', ''),
+          _buildTermsItem('1. Apa Itu Aplikasi Ini?',
+              'Aplikasi ini digunakan untuk mengelola poin, komisi, dan member dalam sistem affiliate. '
+              'Pengguna dapat melihat riwayat transaksi, menambahkan member baru, dan menukarkan poin.'),
+          _buildTermsItem('2. Fitur-Fitur Utama',
+              'Dashboard: Melihat total poin, komisi, dan daftar member.\n\n'
+              'Members: Menampilkan daftar semua member yang kamu rekrut.\n\n'
+              'Detail Member: Menambahkan atau mengedit poin untuk member tertentu.\n\n'
+              'Poin Detail: Menukarkan poin dan melihat status konfirmasi dari kasir.\n\n'
+              'Notifikasi: Melihat pengumuman dan update dari sistem.\n\n'
+              'Profil: Melihat akun kamu dan mengubah kata sandi.\n\n'
+              'Logout: Keluar dari aplikasi.'),
+          _buildTermsItem('3. Cara Menggunakan Aplikasi',
+              'Login menggunakan email dan password.\n\n'
+              'Di Dashboard, cek total poin dan komisi kamu.\n\n'
+              'Untuk menambah member, klik tab Members lalu pilih tombol tambah.\n\n'
+              'Klik nama member untuk masuk ke halaman Detail Member dan isi poinnya.\n\n'
+              'Untuk menukar poin, masuk ke Poin Detail dan ajukan penukaran.\n\n'
+              'Cek notifikasi secara berkala untuk update terbaru.'),
+          _buildTermsItem('4. FAQ (Pertanyaan Umum)',
+              'Bagaimana cara menambah poin untuk member?\n→ Masuk ke halaman Member, pilih nama member, lalu isi form poin.\n\n'
+              'Kenapa poin saya belum ditukar?\n→ Proses penukaran harus dikonfirmasi dulu oleh kasir.'),
+          _buildTermsItem('5. Hubungi Kami',
+              'Jika mengalami kendala, hubungi kami melalui:\n\n'
+              '- Email\n'
+              '- WhatsApp\n'
+              '- Link ke Customer Service'),
+        ];
 
-  List<Widget> _buildTermsEnglish() => [
-        _buildTermsItem('1. Program Registration',
-            'Each affiliate applicant must fill out the registration form...'),
-        _buildTermsItem('2. Affiliate Qualification',
-            'Open to individuals or entities with digital platforms...'),
-        _buildTermsItem('3. Affiliate Links and Promotional Materials',
-            'Affiliates will receive a unique affiliate link...'),
-        _buildTermsItem(
-            '4. Commission', 'Affiliates will earn a commission of [xx]%...'),
-        _buildTermsItem('5. Reporting and Payment',
-            'Transaction data is available on the dashboard...'),
-        _buildTermsItem('6. Affiliate Obligations',
-            'Affiliates must provide accurate information...'),
-        _buildTermsItem('7. BiCOPI Rights',
-            'BiCOPI reserves the right to update, terminate, or modify...'),
-        _buildTermsItem('8. Limitation of Liability',
-            'BiCOPI shall not be liable for indirect losses...'),
-        _buildTermsItem('9. General Provisions',
-            'By participating, the affiliate agrees to comply with the laws...'),
-      ];
+        List<Widget> _buildTermsEnglish() => [
+          _buildTermsItem('📘 User Guide', ''),
+          _buildTermsItem('1. What Is This App?',
+              'This app is used to manage points, commissions, and members in an affiliate system. '
+              'Users can view transaction history, add new members, and redeem points.'),
+          _buildTermsItem('2. Main Features',
+              'Dashboard: View total points, commissions, and member list.\n\n'
+              'Members: Display a list of all members you recruited.\n\n'
+              'Member Detail: Add or edit points for specific members.\n\n'
+              'Points Detail: Redeem points and check cashier confirmation status.\n\n'
+              'Notifications: View system announcements and updates.\n\n'
+              'Profile: View your account and change your password.\n\n'
+              'Logout: Sign out of the app.'),
+          _buildTermsItem('3. How to Use the App',
+              'Log in using your email and password.\n\n'
+              'On the Dashboard, check your total points and commissions.\n\n'
+              'To add a member, go to the Members tab and tap the add button.\n\n'
+              'Tap a members name to open their Detail page and enter points.\n\n'
+              'To redeem points, go to Points Detail and submit a redemption request.\n\n'
+              'Check notifications regularly for the latest updates.'),
+          _buildTermsItem('4. FAQ (Frequently Asked Questions)',
+              'How do I add points for a member?\n→ Go to the Member page, select the member\'s name, and fill out the point form.\n\n'
+              'Why havent my points been redeemed yet?\n→ The redemption process must first be confirmed by the cashier.'),
+          _buildTermsItem('5. Contact Us',
+              'If you experience any issues, contact us via:\n\n'
+              '- Email\n'
+              '- WhatsApp\n'
+              '- Customer Service link'),
+        ];
 
   Widget _buildTermsItem(String title, String content) {
     return Column(
