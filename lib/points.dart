@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 
 import 'home.dart';
 import 'popup.dart';
@@ -17,16 +18,24 @@ class PointsScreen extends StatefulWidget {
 class _PointsScreen extends State<PointsScreen> {
   int _currentIndex = 1;
   int? currentPoints;
+  String? _currentAffiliateId; // Variabel untuk menyimpan affiliates.id yang benar
   List<Map<String, dynamic>> rewards = [];
   bool isLoading = true;
+  final Uuid _uuid = const Uuid(); // Instance Uuid untuk generate ID
 
   @override
   void initState() {
     super.initState();
-    fetchAllData();
+    // Pastikan _fetchAffiliateId dipanggil dan diselesaikan
+    // sebelum memuat data lainnya agar _currentAffiliateId tersedia.
+    _fetchAffiliateId().then((_) {
+      fetchAllData(); // Kemudian panggil fetchAllData setelah affiliate ID diambil
+    });
   }
 
   Future<void> fetchAllData() async {
+    // fetchPointsFromSupabase akan menggunakan user.id,
+    // yang akan mendapatkan total_points dari afiliasi yang terkait.
     await fetchPointsFromSupabase();
     await fetchRewardsFromSupabase();
     setState(() {
@@ -34,10 +43,77 @@ class _PointsScreen extends State<PointsScreen> {
     });
   }
 
+  // Fungsi untuk mengambil ID afiliasi (kolom 'id' di tabel 'affiliates')
+  // yang sesuai dengan user yang sedang login.
+  Future<void> _fetchAffiliateId() async {
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) {
+        print('User not logged in. Cannot fetch affiliate ID.');
+        setState(() {
+          _currentAffiliateId = null;
+        });
+        return;
+      }
+
+      final response = await Supabase.instance.client
+          .from('affiliates')
+          .select('id') // <--- Ambil kolom 'id' dari tabel affiliates
+          .eq('id_user', user.id) // <--- Cari berdasarkan 'id_user' dari Supabase Auth
+          .maybeSingle();
+
+      setState(() {
+        if (response != null && response['id'] != null) {
+          _currentAffiliateId = response['id'] as String;
+          print('DEBUG: Fetched _currentAffiliateId (affiliates.id): $_currentAffiliateId');
+        } else {
+          _currentAffiliateId = null;
+          print('Affiliate ID not found for user: ${user.id}. Attempting to create new entry.');
+          // Jika afiliasi tidak ditemukan, buat entri baru untuk user ini
+          _createAffiliateEntry(user.id);
+        }
+      });
+    } catch (e) {
+      print('Error fetching affiliate ID: $e');
+      setState(() {
+        _currentAffiliateId = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching affiliate ID: $e')),
+      );
+    }
+  }
+
+  // Fungsi untuk membuat entri baru di tabel affiliates jika user belum memiliki
+  Future<void> _createAffiliateEntry(String userId) async {
+    try {
+      final newAffiliateId = _uuid.v4(); // Generate UUID baru untuk kolom 'id'
+      await Supabase.instance.client.from('affiliates').insert({
+        'id': newAffiliateId,      // Ini akan menjadi Primary Key yang dirujuk
+        'id_user': userId,        // Ini adalah user.id dari Supabase Auth
+        'total_points': 0,        // Nilai awal poin
+      });
+      setState(() {
+        _currentAffiliateId = newAffiliateId;
+        currentPoints = 0; // Inisialisasi poin menjadi 0 juga
+      });
+      print('New affiliate entry created with ID: $newAffiliateId for user: $userId');
+    } catch (e) {
+      print('Error creating affiliate entry: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error creating affiliate entry: $e')),
+      );
+    }
+  }
+
+
   Future<void> fetchPointsFromSupabase() async {
     try {
       final user = Supabase.instance.client.auth.currentUser;
-      if (user == null) return;
+      if (user == null) {
+        print('User not logged in. Cannot fetch points.');
+        return;
+      }
 
       final response = await Supabase.instance.client
           .from('affiliates')
@@ -49,9 +125,23 @@ class _PointsScreen extends State<PointsScreen> {
         setState(() {
           currentPoints = response['total_points'];
         });
+      } else {
+        // Jika tidak ada points ditemukan, set ke 0
+        setState(() {
+          currentPoints = 0;
+        });
+        print('No points found for user: ${user.id}');
+        // Perbaikan: Jika _currentAffiliateId masih null setelah fetch,
+        // coba buat entri baru (opsional, karena sudah ditangani di _fetchAffiliateId)
+        if (_currentAffiliateId == null) {
+          _createAffiliateEntry(user.id);
+        }
       }
     } catch (e) {
       print('Error fetching points: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching points: $e')),
+      );
     }
   }
 
@@ -74,6 +164,9 @@ class _PointsScreen extends State<PointsScreen> {
       });
     } catch (e) {
       print('Error fetching rewards: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching rewards: $e')),
+      );
     }
   }
 
@@ -81,6 +174,13 @@ class _PointsScreen extends State<PointsScreen> {
     setState(() {
       _currentIndex = index;
     });
+    if (index == 0) {
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HomeScreen()));
+    } else if (index == 2) {
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const NotificationScreen()));
+    } else if (index == 3) {
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const ProfileScreen()));
+    }
   }
 
   @override
@@ -119,7 +219,7 @@ class _PointsScreen extends State<PointsScreen> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
+                    boxShadow: const [
                       BoxShadow(color: Colors.black12, blurRadius: 6, spreadRadius: 1),
                     ],
                   ),
@@ -163,25 +263,7 @@ class _PointsScreen extends State<PointsScreen> {
         selectedItemColor: Colors.green,
         unselectedItemColor: Colors.grey,
         currentIndex: _currentIndex,
-        onTap: (index) {
-          if (index != _currentIndex) {
-            Widget nextScreen;
-            if (index == 0) {
-              nextScreen = const HomeScreen();
-            } else if (index == 2) {
-              nextScreen = const NotificationScreen();
-            } else if (index == 3) {
-              nextScreen = const ProfileScreen();
-            } else {
-              return;
-            }
-
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => nextScreen),
-            );
-          }
-        },
+        onTap: _onTabTapped,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.star), label: 'Points'),
@@ -223,7 +305,7 @@ class _PointsScreen extends State<PointsScreen> {
               ),
               ElevatedButton(
                 onPressed: currentPoints != null && currentPoints! >= points
-                    ? () => showRedeemDialog(context, title, points)
+                    ? () => showRedeemDialog(context, title, points, description)
                     : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,
@@ -238,7 +320,7 @@ class _PointsScreen extends State<PointsScreen> {
     );
   }
 
-  void showRedeemDialog(BuildContext context, String title, int points) {
+  void showRedeemDialog(BuildContext context, String title, int points, String description) {
     if (currentPoints! < points) {
       showDialog(
         context: context,
@@ -272,36 +354,74 @@ class _PointsScreen extends State<PointsScreen> {
             TextButton(
               onPressed: () async {
                 Navigator.pop(context);
+
                 final user = Supabase.instance.client.auth.currentUser;
 
-                if (user != null) {
-                  int updatedPoints = currentPoints! - points;
-                  try {
-                    // Update ke Supabase
-                    await Supabase.instance.client
-                        .from('affiliates')
-                        .update({'total_points': updatedPoints})
-                        .eq('id_user', user.id);
-
-                    setState(() {
-                      currentPoints = updatedPoints;
-                    });
-                  } catch (e) {
-                    print('Error updating points: $e');
-                    // Tambahkan notifikasi error kalau mau
-                  }
-
-                  String transactionId = generateUniqueId();
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => PopupPage(
-                        title: title,
-                        points: points,
-                        transactionId: transactionId,
-                      ),
-                    ),
+                if (user == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Anda harus login untuk menukar reward.')),
                   );
+                  return;
+                }
+
+                // PENTING: Pastikan _currentAffiliateId sudah ada sebelum digunakan
+                if (_currentAffiliateId == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Error: ID afiliasi tidak ditemukan. Coba restart aplikasi atau login ulang.')),
+                  );
+                  print('Error: _currentAffiliateId is NULL when trying to open PopupPage.');
+                  return;
+                }
+
+                //int updatedPoints = currentPoints! - points;
+                //try {
+                  //await Supabase.instance.client
+                    //  .from('affiliates')
+                      //.update({'total_points': updatedPoints})
+                      //.eq('id_user', user.id);
+
+                  //setState(() {
+                    //currentPoints = updatedPoints;
+                  //});
+                //} catch (e) {
+                  //print('Error updating points: $e');
+                  //ScaffoldMessenger.of(context).showSnackBar(
+                    //SnackBar(content: Text('Gagal memperbarui poin: $e')),
+                  //);
+                  //return;
+                //}
+
+                String transactionId = _uuid.v4();
+                String affiliateIdToSend = _currentAffiliateId!; // <--- Kirim ID afiliasi yang BENAR
+
+                final bool? redemptionSuccessful = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => PopupPage(
+                    title: title,
+                    points: points,
+                    transactionId: transactionId,
+                    affiliateId: affiliateIdToSend, // <--- Gunakan ID afiliasi yang sudah diambil
+                    description: description,
+                  ),
+                );
+
+                if (redemptionSuccessful == true) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Penukaran berhasil dicatat!')),
+                  );
+                  await fetchPointsFromSupabase(); // Perbarui poin setelah sukses
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Pencatatan penukaran gagal atau dibatalkan.')),
+                  );
+                  // Opsional: Jika pencatatan gagal, pertimbangkan untuk mengembalikan poin
+                  // await Supabase.instance.client
+                  //   .from('affiliates')
+                  //   .update({'total_points': currentPoints! + points}) // Kembalikan poin
+                  //   .eq('id_user', user.id);
+                  // setState(() {
+                  //   currentPoints = currentPoints! + points;
+                  // });
                 }
               },
               child: const Text("Ya"),
@@ -310,9 +430,5 @@ class _PointsScreen extends State<PointsScreen> {
         );
       },
     );
-  }
-
-  String generateUniqueId() {
-    return DateTime.now().millisecondsSinceEpoch.toString();
   }
 }
