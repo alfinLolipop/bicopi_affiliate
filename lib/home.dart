@@ -11,8 +11,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:week_of_year/week_of_year.dart';
 
-
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Supabase.initialize(
@@ -88,24 +86,26 @@ class _HomeScreenState extends State<HomeScreen> {
 
         // Ambil hanya member yang affiliate_id = affiliateId
         // Di dalam _fetchMembers()
-final response = await Supabase.instance.client
-    .from('members')
-    .select('id_user, joined_at, users(username, photo_url)')
-    .eq('affiliate_id', affiliateId)
-    .order('joined_at', ascending: false);
+        final response = await Supabase.instance.client
+            .from('members')
+            .select('id_user, joined_at, users(username, photo_url)')
+            .eq('affiliate_id', affiliateId)
+            .order('joined_at', ascending: false);
 
-print('RAW Response from Supabase: $response'); // Periksa seluruh respons
+        print(
+            'RAW Response from Supabase: $response'); // Periksa seluruh respons
 
-setState(() {
-  _members = List<Map<String, dynamic>>.from(response);
-});
+        setState(() {
+          _members = List<Map<String, dynamic>>.from(response);
+        });
 
 // Tambahkan loop untuk memeriksa setiap anggota
-for (var member in _members) {
-  final String? photoUrl = member['users']?['photo_url'];
-  final String? username = member['users']?['username'];
-  print('Member: $username, Photo URL: $photoUrl'); // Cetak URL yang diterima
-}
+        for (var member in _members) {
+          final String? photoUrl = member['users']?['photo_url'];
+          final String? username = member['users']?['username'];
+          print(
+              'Member: $username, Photo URL: $photoUrl'); // Cetak URL yang diterima
+        }
       } catch (e) {
         print('Gagal mengambil data members: $e');
       }
@@ -156,69 +156,65 @@ for (var member in _members) {
 
   List<FlSpot> _chartData = [];
 
-  
-
   Future<void> _fetchChartData() async {
-  final user = Supabase.instance.client.auth.currentUser;
-  if (user == null) return;
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
 
-  String dateTrunc = switch (_selectedFilter) {
-    'Weekly'  => 'week',
-    'Monthly' => 'month',
-    _         => 'day',
-  };
+    String dateTrunc = switch (_selectedFilter) {
+      'Weekly' => 'week',
+      'Monthly' => 'month',
+      _ => 'day',
+    };
 
-  try {
-    // Ambil ID affiliate berdasarkan id_user
-    final affiliate = await Supabase.instance.client
-        .from('affiliates')
-        .select('id')
-        .eq('id_user', user.id)
-        .maybeSingle();
+    try {
+      // Ambil ID affiliate berdasarkan id_user
+      final affiliate = await Supabase.instance.client
+          .from('affiliates')
+          .select('id')
+          .eq('id_user', user.id)
+          .maybeSingle();
 
-    if (affiliate == null) {
-      print('Affiliate tidak ditemukan');
-      return;
+      if (affiliate == null) {
+        print('Affiliate tidak ditemukan');
+        return;
+      }
+
+      final affiliateId = affiliate['id'];
+
+      final response = await Supabase.instance.client
+          .from('affiliate_points_log')
+          .select('created_at, points_earned')
+          .eq('affiliate_id', affiliateId)
+          .order('created_at', ascending: true);
+
+      final Map<String, double> grouped = {};
+      for (var item in response) {
+        final createdAt = DateTime.parse(item['created_at']);
+        final key = switch (dateTrunc) {
+          'week' => '${createdAt.year}-${createdAt.weekOfYear}',
+          'month' => '${createdAt.year}-${createdAt.month}',
+          _ => '${createdAt.year}-${createdAt.month}-${createdAt.day}',
+        };
+        grouped[key] =
+            (grouped[key] ?? 0) + (item['points_earned'] as num).toDouble();
+      }
+
+      final sortedKeys = grouped.keys.toList()..sort();
+      final spots = <FlSpot>[
+        for (int i = 0; i < sortedKeys.length; i++)
+          FlSpot(i.toDouble(), grouped[sortedKeys[i]]!)
+      ];
+
+      setState(() {
+        _chartData = spots.isEmpty ? [const FlSpot(0, 0)] : spots;
+      });
+    } catch (e) {
+      print('Gagal mengambil data grafik: $e');
+      setState(() {
+        _chartData = [const FlSpot(0, 0)];
+      });
     }
-
-    final affiliateId = affiliate['id'];
-
-    final response = await Supabase.instance.client
-        .from('affiliate_points_log')
-        .select('created_at, points_earned')
-        .eq('affiliate_id', affiliateId)
-        .order('created_at', ascending: true);
-
-    final Map<String, double> grouped = {};
-    for (var item in response) {
-      final createdAt = DateTime.parse(item['created_at']);
-      final key = switch (dateTrunc) {
-        'week'  => '${createdAt.year}-${createdAt.weekOfYear}',
-        'month' => '${createdAt.year}-${createdAt.month}',
-        _       => '${createdAt.year}-${createdAt.month}-${createdAt.day}',
-      };
-      grouped[key] = (grouped[key] ?? 0) +
-          (item['points_earned'] as num).toDouble();
-    }
-
-    final sortedKeys = grouped.keys.toList()..sort();
-    final spots = <FlSpot>[
-      for (int i = 0; i < sortedKeys.length; i++)
-        FlSpot(i.toDouble(), grouped[sortedKeys[i]]!)
-    ];
-
-    setState(() {
-      _chartData = spots.isEmpty ? [const FlSpot(0, 0)] : spots;
-    });
-  } catch (e) {
-    print('Gagal mengambil data grafik: $e');
-    setState(() {
-      _chartData = [const FlSpot(0, 0)];
-    });
   }
-}
-
-
 
   Future<void> _getUserData() async {
     final user = Supabase.instance.client.auth.currentUser;
@@ -357,7 +353,7 @@ for (var member in _members) {
                         ),
                         child: _chartData.isEmpty
                             ? Center(
-                               child: Text('Tidak ada data',
+                                child: Text('Tidak ada data',
                                     style: GoogleFonts.poppins()))
                             : LineChart(
                                 LineChartData(
@@ -507,7 +503,8 @@ for (var member in _members) {
                 date: member['joined_at'] != null
                     ? member['joined_at'].toString().substring(0, 10)
                     : 'Tidak diketahui',
-                image: member['users']?['photo_url'] ?? 'assets/profil.png', // <--- BARIS YANG DIMODIFIKASI
+                image: member['users']?['photo_url'] ??
+                    'assets/profil.png', // <--- BARIS YANG DIMODIFIKASI
               )),
           SizedBox(height: 16),
           SizedBox(
@@ -570,7 +567,8 @@ class MemberItem extends StatelessWidget {
         radius: 20,
         // GUNAKAN imageProvider DI SINI
         backgroundImage: imageProvider,
-        backgroundColor: Colors.grey.shade200, // Warna latar belakang jika gambar tidak ada
+        backgroundColor:
+            Colors.grey.shade200, // Warna latar belakang jika gambar tidak ada
         // Optional: Tambahkan ikon placeholder jika URL kosong dan itu NetworkImage
         child: imageProvider is NetworkImage && image.isEmpty
             ? const Icon(Icons.person, color: Colors.grey)

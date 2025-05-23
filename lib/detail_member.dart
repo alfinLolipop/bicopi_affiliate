@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class DetailMemberScreen extends StatefulWidget {
@@ -13,14 +14,159 @@ class DetailMemberScreen extends StatefulWidget {
 
 class _DetailMemberScreenState extends State<DetailMemberScreen> {
   List<Map<String, dynamic>> _riwayatTransaksi = [];
+  StreamSubscription<List<Map<String, dynamic>>>? _affiliateLogSubscription;
+
   bool _isLoadingRiwayat = true;
+
+  Stream<List<Map<String, dynamic>>>? _affiliatePointLogStream;
+  String? _currentAffiliateId; // ID affiliate yang login
+
+  // Variabel lokal untuk UI dropdown
+  int kelipatan = 10;
+  int _selectedPercentage = 10;
+  final int maxPersen = 100;
+
+  List<int> get _percentages =>
+      List.generate((maxPersen ~/ kelipatan), (index) => (index + 1) * kelipatan);
 
   @override
   void initState() {
     super.initState();
     _initializeValues();
     _fetchRiwayatTransaksi();
+    _getCurrentAffiliateId(); // Dapatkan ID affiliate saat ini dan set up listener
   }
+
+  // Metode untuk mendapatkan ID affiliate yang sedang login
+  Future<void> _getCurrentAffiliateId() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user != null) {
+      setState(() {
+        _currentAffiliateId = user.id;
+      });
+      _setupAffiliatePointLogListener(); // Set up listener setelah ID affiliate didapatkan
+    } else {
+      print('Tidak ada affiliate yang login.');
+      // Handle jika tidak ada user yang login, mungkin redirect ke halaman login
+      // Atau tampilkan pesan kesalahan di UI
+    }
+  }
+
+  // Metode untuk menyiapkan listener Realtime Supabase
+  void _setupAffiliatePointLogListener() {
+  if (_currentAffiliateId == null) return;
+
+  final stream = Supabase.instance.client
+      .from('affiliate_points_log')
+      .stream(primaryKey: ['id'])
+      .eq('affiliate_id', _currentAffiliateId!)
+      .order('created_at', ascending: false);
+
+  _affiliateLogSubscription = stream.listen((data) async {
+    for (var log in data) {
+      final logId = log['id'];
+      final int points = log['points_earned'] ?? 0;
+      final String? memberId = log['member_id'];
+      final String? orderId = log['order_id'];
+
+      // Skip jika data tidak valid
+      if (points <= 0 || memberId == null) continue;
+
+      // Cek apakah log sudah diproses sebelumnya (opsional: jika ada kolom 'processed')
+      final existing = await Supabase.instance.client
+          .from('member_points_log')
+          .select()
+          .eq('order_id', orderId as Object)
+          .eq('member_id', memberId)
+          .maybeSingle();
+
+      if (existing != null) {
+        print('Log $logId sudah pernah diproses.');
+        continue;
+      }
+
+      await _processAffiliatePoints(points, memberId, orderId);
+    }
+  }, onError: (e) {
+    print('❌ Error listening to affiliate_points_log: $e');
+  });
+}
+
+  // Metode untuk memproses poin dari affiliate
+  // Sekarang menerima memberIdToReceivePoints dan orderId dari log affiliate
+  Future<void> _processAffiliatePoints(
+      int totalPoinAffiliate, String memberIdToReceivePoints, String? orderId) async {
+    if (_currentAffiliateId == null) {
+      print('Affiliate ID tidak tersedia untuk memproses poin.');
+      return;
+    }
+
+    // --- BARU: Ambil presentase TERKINI dari tabel 'members' ---
+    int actualPercentage = 10; // Default fallback
+    try {
+      final memberData = await Supabase.instance.client
+          .from('members')
+          .select('presentase') // Hanya ambil 'presentase' karena itu yang digunakan untuk perhitungan
+          .eq('id', memberIdToReceivePoints)
+          .single();
+
+      if (memberData != null && memberData['presentase'] != null) {
+
+        actualPercentage = memberData['presentase'] as int;
+      } else {
+        print('Data presentase member tidak ditemukan atau tipe data salah untuk ID: $memberIdToReceivePoints, menggunakan nilai default.');
+      }
+    } catch (e) {
+      print('Gagal mengambil presentase member dari database: $e, menggunakan nilai default.');
+    }
+    // --- AKHIR DARI BAGIAN BARU ---
+
+    // Gunakan actualPercentage yang baru diambil dari database
+    int poinUntukMember = ((totalPoinAffiliate * actualPercentage) / 100).round();
+
+    print('✅ Affiliate mengirim poin!');
+    print('Affiliate mengirim: $totalPoinAffiliate poin');
+    print('Mengirim $actualPercentage% poin ke member: $poinUntukMember');
+
+    try {
+      // Masukkan poin ke member_points_log
+      await Supabase.instance.client.from('member_points_log').insert({
+        'member_id': memberIdToReceivePoints,
+        'points_earned': poinUntukMember,
+        'description': 'Menerima $poinUntukMember poin dari transaksi affiliate (Affiliate ID: $_currentAffiliateId)',
+        'created_at': DateTime.now().toUtc().toIso8601String(),
+        'order_id': orderId, // Masukkan order_id dari log affiliate
+      });
+
+      print('Poin berhasil dikirim ke member_points_log.');
+      // Refresh riwayat transaksi member setelah poin ditambahkan,
+      // tapi hanya jika member_id yang ditambahkan adalah member yang sedang dilihat di layar ini.
+      if (memberIdToReceivePoints == widget.data['id']) {
+         _fetchRiwayatTransaksi();
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Berhasil mengirim $poinUntukMember poin ke member!'),
+        ),
+      );
+    } catch (e) {
+      print('Gagal mengirim poin ke member_points_log: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal mengirim poin ke member: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  @override
+void dispose() {
+  _affiliateLogSubscription?.cancel(); // Stop listener realtime
+  super.dispose();
+}
+
 
   Future<void> _fetchRiwayatTransaksi() async {
     final memberId = widget.data['id'];
@@ -67,54 +213,56 @@ class _DetailMemberScreenState extends State<DetailMemberScreen> {
     return bulanIndo[bulan];
   }
 
-  int kelipatan = 10;
-  int _selectedPercentage = 10;
-  final int maxPersen = 100;
-
-  List<int> get _percentages => List.generate(
-      (maxPersen ~/ kelipatan), (index) => (index + 1) * kelipatan);
-
   void _initializeValues() {
     setState(() {
-      kelipatan = widget.data['kelipatan'] ?? 10;
-      _selectedPercentage = widget.data['presentase'] ?? kelipatan;
+      // Pastikan casting ke int, karena dari database mungkin datang sebagai int? atau dynamic
+      kelipatan = widget.data['kelipatan'] as int? ?? 10;
+      _selectedPercentage = widget.data['presentase'] as int? ?? kelipatan;
     });
   }
 
   Future<void> _updateKelipatanDanPersentase() async {
-    final id = widget.data['id'];
+    final id = widget.data['id']; // ID member yang sedang dilihat
     final now = DateTime.now().toUtc().toIso8601String();
 
-    final response = await Supabase.instance.client.from('members').update({
-      'kelipatan': kelipatan,
-      'presentase': _selectedPercentage,
-      'updated_at': now,
-    }).eq('id', id);
+    try {
+      // Tambahkan .select() untuk mendapatkan response dari operasi update
+      final response = await Supabase.instance.client.from('members').update({
+        'kelipatan': kelipatan, // Nilai yang dipilih di dropdown UI
+        'presentase': _selectedPercentage, // Nilai yang dipilih di dropdown UI
+        'updated_at': now,
+      }).eq('id', id).select(); // Menambahkan .select() di sini
 
-    // Gunakan response.hasError untuk penanganan error yang lebih baik
-    if (response.hasError) {
-      print('Gagal update data: ${response.error!.message}');
-    } else {
-      print('Kelipatan dan presentase berhasil diupdate.');
+      // Supabase postgrest-dart (client) tidak akan mengembalikan 'hasError' secara langsung
+      // jika terjadi kesalahan jaringan atau server, ia akan melempar exception.
+      // Jika response kosong atau tidak ada data yang diupdate, itu juga bisa menandakan masalah.
+      if (response.isEmpty) { // Cek apakah tidak ada data yang dikembalikan (artinya mungkin gagal update)
+        print('Gagal update data: Response kosong');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal memperbarui pengaturan poin member. Data tidak ditemukan atau tidak diizinkan.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      } else {
+        // Jika response tidak kosong, anggap berhasil
+        print('Kelipatan dan presentase berhasil diupdate di database.');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Pengaturan poin member berhasil diperbarui!'),
+          ),
+        );
+      }
+    } catch (e) {
+      // Tangkap exception jika ada error dari Supabase client
+      print('Gagal update data: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Terjadi kesalahan saat memperbarui: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
-  }
-
-  void prosesTransaksi(int totalPoin) {
-    int poinAffiliate = totalPoin;
-    int poinUntukMember = ((poinAffiliate * _selectedPercentage) / 100).round();
-    int sisaPoinAffiliate = poinAffiliate - poinUntukMember;
-
-    print('✅ Member membeli barang!');
-    print('Affiliate menerima: $poinAffiliate poin');
-    print('Mengirim $_selectedPercentage% poin ke member: $poinUntukMember');
-    print('Sisa poin affiliate: $sisaPoinAffiliate');
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-            'Mengirim $poinUntukMember poin ke member ($_selectedPercentage%)'),
-      ),
-    );
   }
 
   @override
@@ -124,15 +272,13 @@ class _DetailMemberScreenState extends State<DetailMemberScreen> {
     final email = user['email'] ?? '-';
     final status = widget.data['status'] ?? 'Aktif';
     final phone = user['phone'] ?? '-';
-    // Ambil photo_url dari data user
-    final photoUrl = user['photo_url'] ?? ''; // Jika null, gunakan string kosong
+    final photoUrl = user['photo_url'] ?? '';
 
-    // Tentukan ImageProvider berdasarkan apakah photoUrl adalah URL atau kosong
     ImageProvider profileImageProvider;
-    if (photoUrl.isNotEmpty && (photoUrl.startsWith('http://') || photoUrl.startsWith('https://'))) {
+    if (photoUrl.isNotEmpty &&
+        (photoUrl.startsWith('http://') || photoUrl.startsWith('https://'))) {
       profileImageProvider = NetworkImage(photoUrl);
     } else {
-      // Fallback ke aset lokal jika photoUrl kosong atau bukan URL
       profileImageProvider = const AssetImage('assets/icons/avatar.png');
     }
 
@@ -169,10 +315,9 @@ class _DetailMemberScreenState extends State<DetailMemberScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Teruskan profileImageProvider ke _buildProfileCard
             _buildProfileCard(name, email, status, phone, profileImageProvider),
             const SizedBox(height: 16),
-            _buildPointSection(),
+            _buildPointSection(), // Bagian untuk mengatur kelipatan dan presentase member
             const SizedBox(height: 16),
             const Text(
               'Riwayat Transaksi',
@@ -189,12 +334,26 @@ class _DetailMemberScreenState extends State<DetailMemberScreen> {
                           final tanggal =
                               '${dateTime.day} ${_getNamaBulan(dateTime.month)} ${dateTime.year}';
                           final poin = log['points_earned'] ?? 0;
+                          final description = log['description'] as String? ?? 'Transaksi';
+
+                          Color statusColor = Colors.grey;
+                          String statusText = 'Unknown';
+
+                          // Sesuaikan status berdasarkan deskripsi
+                          if (description.contains('Menerima') && description.contains('affiliate')) {
+                            statusColor = Colors.green;
+                            statusText = 'Diterima dari Affiliate';
+                          } else if (description.contains('Dikirim')) {
+                            statusColor = Colors.blue;
+                            statusText = 'Dikirim';
+                          }
+                          // Tambahkan kondisi lain jika ada tipe log lain
 
                           return _buildTransactionItem(
                             tanggal,
                             '$poin poin',
-                            'Terkirim',
-                            Colors.green,
+                            statusText,
+                            statusColor,
                           );
                         }).toList(),
                       ),
@@ -205,9 +364,9 @@ class _DetailMemberScreenState extends State<DetailMemberScreen> {
     );
   }
 
-  // Tambahkan parameter ImageProvider ke _buildProfileCard
-  Widget _buildProfileCard(
-      String name, String email, String status, String phone, ImageProvider imageProvider) {
+  // Bagian Widget yang tidak berubah
+  Widget _buildProfileCard(String name, String email, String status, String phone,
+      ImageProvider imageProvider) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -220,10 +379,8 @@ class _DetailMemberScreenState extends State<DetailMemberScreen> {
             children: [
               CircleAvatar(
                 radius: 30,
-                backgroundImage: imageProvider, // Gunakan ImageProvider di sini
-                backgroundColor: Colors.grey.shade200, // Background jika gambar belum dimuat
-                // Anda bisa menambahkan child Icon jika ingin menampilkan ikon placeholder
-                // misalnya: child: (imageProvider is NetworkImage && imageProvider.url.isEmpty) ? Icon(Icons.person) : null,
+                backgroundImage: imageProvider,
+                backgroundColor: Colors.grey.shade200,
               ),
               const SizedBox(width: 12),
               Column(
@@ -284,7 +441,7 @@ class _DetailMemberScreenState extends State<DetailMemberScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Berikan Point',
+            'Pengaturan Point Member',
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
           const SizedBox(height: 12),
@@ -308,7 +465,7 @@ class _DetailMemberScreenState extends State<DetailMemberScreen> {
                       kelipatan = val;
                       _selectedPercentage = val; // reset persentase
                     });
-                    _updateKelipatanDanPersentase();
+                    _updateKelipatanDanPersentase(); // Update ke database
                   }
                 },
               ),
@@ -338,7 +495,7 @@ class _DetailMemberScreenState extends State<DetailMemberScreen> {
                 setState(() {
                   _selectedPercentage = value;
                 });
-                _updateKelipatanDanPersentase();
+                _updateKelipatanDanPersentase(); // Update ke database
               }
             },
           ),
