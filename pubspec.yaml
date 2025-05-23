@@ -38,6 +38,7 @@ dependencies:
   shared_preferences: ^2.2.2
   week_of_year: ^2.2.0
   intl: ^0.18.1
+  uuid: ^4.0.0
 
 
     
