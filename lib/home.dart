@@ -164,7 +164,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
 
-    DateTime now = DateTime.now();
+    // GUNAKAN UTC UNTUK FILTER DAN DATA
+    DateTime now = DateTime.now().toUtc();
     List<String> xLabels = [];
     Map<String, double> grouped = {};
 
@@ -194,7 +195,7 @@ class _HomeScreenState extends State<HomeScreen> {
           grouped[hour] = 0;
         }
         for (var item in response) {
-          final createdAt = DateTime.parse(item['created_at']).toLocal();
+          final createdAt = DateTime.parse(item['created_at']); // UTC
           if (createdAt.year == now.year &&
               createdAt.month == now.month &&
               createdAt.day == now.day) {
@@ -465,7 +466,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                                   textAlign: TextAlign.left,
                                                 );
                                               },
-                                              // FIX: interval tidak boleh 0
                                               interval: (() {
                                                 if (_chartData.isEmpty)
                                                   return 1.0;
@@ -583,7 +583,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                               ),
                                             ),
                                             dotData: FlDotData(
-                                              show: false, // bulat-bulat hilang
+                                              show: false,
                                             ),
                                             spots: _chartData,
                                             shadow: const Shadow(
