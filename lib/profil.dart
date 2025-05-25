@@ -45,7 +45,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-              builder: (context) => const VerifikasiEmailScreen(email: '')),
+              builder: (context) => const VerifikasiEmailScreen(email: '')
+          ),
         );
       });
     } else {
@@ -80,7 +81,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(
-        builder: (context) => const LogoutSuccessScreen(),
+
+        builder: (context) => const LogoutSuccessScreen(), 
+
       ),
       (route) => false,
     );
@@ -390,6 +393,7 @@ class _TermsAndConditionsScreenState extends State<TermsAndConditionsScreen> {
     );
   }
 
+
   List<Widget> _buildTermsIndo() => [
         _buildTermsItem('📘 Panduan Pengguna', ''),
         _buildTermsItem(
@@ -459,6 +463,7 @@ class _TermsAndConditionsScreenState extends State<TermsAndConditionsScreen> {
                 '- WhatsApp\n'
                 '- Customer Service link'),
       ];
+
 
   Widget _buildTermsItem(String title, String content) {
     return Column(
