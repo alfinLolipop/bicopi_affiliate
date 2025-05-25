@@ -260,16 +260,24 @@ class _DetailMemberScreenState extends State<DetailMemberScreen> {
                                 final poin = log['points_earned'] ?? 0;
                                 final description = log['description'] as String? ?? 'Transaksi';
 
-                                Color statusColor = Colors.grey;
-                                String statusText = 'Unknown';
+                                Color statusColor = Colors.green.shade700;
+                                String statusText = 'Terkirim';
 
                                 if (description.contains('Menerima') &&
                                     description.contains('affiliate')) {
-                                  statusColor = Colors.green;
+                                  statusColor = Colors.green.shade700;
                                   statusText = 'Diterima dari Affiliate';
                                 } else if (description.contains('Dikirim')) {
-                                  statusColor = Colors.blue;
+                                  statusColor = Colors.green.shade400;
                                   statusText = 'Dikirim';
+                                }
+
+                                // Gradasi hijau untuk semua status
+                                Color bgColor = Colors.white;
+                                if (statusText == 'Diterima dari Affiliate') {
+                                  bgColor = Colors.green.shade50;
+                                } else if (statusText == 'Terkirim' || statusText == 'Dikirim') {
+                                  bgColor = Colors.green.withOpacity(0.07);
                                 }
 
                                 return _buildTransactionItem(
@@ -277,6 +285,7 @@ class _DetailMemberScreenState extends State<DetailMemberScreen> {
                                   '$poin poin',
                                   statusText,
                                   statusColor,
+                                  bgColor,
                                 );
                               },
                             ),
@@ -468,25 +477,41 @@ class _DetailMemberScreenState extends State<DetailMemberScreen> {
   }
 
   Widget _buildTransactionItem(
-      String date, String amount, String status, Color statusColor) {
+      String date, String amount, String status, Color statusColor, Color bgColor) {
+    // Gradasi hijau pada background dan badge
+    BoxDecoration boxDecoration = BoxDecoration(
+      color: bgColor,
+      gradient: (status == 'Diterima dari Affiliate')
+          ? LinearGradient(
+              colors: [Colors.green.shade50, Colors.white],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            )
+          : (status == 'Terkirim' || status == 'Dikirim')
+              ? LinearGradient(
+                  colors: [Colors.green.withOpacity(0.07), Colors.white],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : null,
+      borderRadius: BorderRadius.circular(14),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.green.withOpacity(0.06),
+          blurRadius: 8,
+          offset: const Offset(0, 2),
+        ),
+      ],
+      border: Border.all(
+        color: statusColor.withOpacity(0.18),
+        width: 1.2,
+      ),
+    );
+
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6),
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.06),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-        border: Border.all(
-          color: statusColor.withOpacity(0.15),
-          width: 1,
-        ),
-      ),
+      decoration: boxDecoration,
       child: Row(
         children: [
           Container(
@@ -533,7 +558,7 @@ class _DetailMemberScreenState extends State<DetailMemberScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.09),
+              color: statusColor.withOpacity(0.13),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
