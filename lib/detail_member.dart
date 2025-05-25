@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class DetailMemberScreen extends StatefulWidget {
@@ -13,13 +14,53 @@ class DetailMemberScreen extends StatefulWidget {
 
 class _DetailMemberScreenState extends State<DetailMemberScreen> {
   List<Map<String, dynamic>> _riwayatTransaksi = [];
+  StreamSubscription<List<Map<String, dynamic>>>? _affiliateLogSubscription;
+
   bool _isLoadingRiwayat = true;
+
+  Stream<List<Map<String, dynamic>>>? _affiliatePointLogStream;
+  String? _currentAffiliateId; // ID affiliate yang login
+
+  // Variabel lokal untuk UI dropdown
+  int kelipatan = 10;
+  int _selectedPercentage = 10;
+  final int maxPersen = 100;
+
+  List<int> get _percentages =>
+      List.generate((maxPersen ~/ kelipatan), (index) => (index + 1) * kelipatan);
 
   @override
   void initState() {
     super.initState();
     _initializeValues();
     _fetchRiwayatTransaksi();
+    _getCurrentAffiliateId();
+  }
+
+  Future<void> _getCurrentAffiliateId() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user != null) {
+      setState(() {
+        _currentAffiliateId = user.id;
+      });
+    } else {
+      print('Tidak ada affiliate yang login.');
+    }
+  }
+
+  void _setupAffiliatePointLogListener() {
+    // Tidak digunakan lagi
+  }
+
+  Future<void> _processAffiliatePoints(
+      int totalPoinAffiliate, String memberIdToReceivePoints, String? orderId) async {
+    // Tidak digunakan lagi
+  }
+
+  @override
+  void dispose() {
+    _affiliateLogSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _fetchRiwayatTransaksi() async {
@@ -50,7 +91,7 @@ class _DetailMemberScreenState extends State<DetailMemberScreen> {
 
   String _getNamaBulan(int bulan) {
     const bulanIndo = [
-      '', // index ke-0 tidak dipakai
+      '',
       'Januari',
       'Februari',
       'Maret',
@@ -67,17 +108,10 @@ class _DetailMemberScreenState extends State<DetailMemberScreen> {
     return bulanIndo[bulan];
   }
 
-  int kelipatan = 10;
-  int _selectedPercentage = 10;
-  final int maxPersen = 100;
-
-  List<int> get _percentages => List.generate(
-      (maxPersen ~/ kelipatan), (index) => (index + 1) * kelipatan);
-
   void _initializeValues() {
     setState(() {
-      kelipatan = widget.data['kelipatan'] ?? 10;
-      _selectedPercentage = widget.data['presentase'] ?? kelipatan;
+      kelipatan = widget.data['kelipatan'] as int? ?? 10;
+      _selectedPercentage = widget.data['presentase'] as int? ?? kelipatan;
     });
   }
 
@@ -85,36 +119,38 @@ class _DetailMemberScreenState extends State<DetailMemberScreen> {
     final id = widget.data['id'];
     final now = DateTime.now().toUtc().toIso8601String();
 
-    final response = await Supabase.instance.client.from('members').update({
-      'kelipatan': kelipatan,
-      'presentase': _selectedPercentage,
-      'updated_at': now,
-    }).eq('id', id);
+    try {
+      final response = await Supabase.instance.client.from('members').update({
+        'kelipatan': kelipatan,
+        'presentase': _selectedPercentage,
+        'updated_at': now,
+      }).eq('id', id).select();
 
-    // Gunakan response.hasError untuk penanganan error yang lebih baik
-    if (response.hasError) {
-      print('Gagal update data: ${response.error!.message}');
-    } else {
-      print('Kelipatan dan presentase berhasil diupdate.');
+      if (response.isEmpty) {
+        print('Gagal update data: Response kosong');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal memperbarui pengaturan poin member. Data tidak ditemukan atau tidak diizinkan.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      } else {
+        print('Kelipatan dan presentase berhasil diupdate di database.');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Pengaturan poin member berhasil diperbarui!'),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Gagal update data: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Terjadi kesalahan saat memperbarui: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
-  }
-
-  void prosesTransaksi(int totalPoin) {
-    int poinAffiliate = totalPoin;
-    int poinUntukMember = ((poinAffiliate * _selectedPercentage) / 100).round();
-    int sisaPoinAffiliate = poinAffiliate - poinUntukMember;
-
-    print('✅ Member membeli barang!');
-    print('Affiliate menerima: $poinAffiliate poin');
-    print('Mengirim $_selectedPercentage% poin ke member: $poinUntukMember');
-    print('Sisa poin affiliate: $sisaPoinAffiliate');
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-            'Mengirim $poinUntukMember poin ke member ($_selectedPercentage%)'),
-      ),
-    );
   }
 
   @override
@@ -124,26 +160,25 @@ class _DetailMemberScreenState extends State<DetailMemberScreen> {
     final email = user['email'] ?? '-';
     final status = widget.data['status'] ?? 'Aktif';
     final phone = user['phone'] ?? '-';
-    // Ambil photo_url dari data user
-    final photoUrl = user['photo_url'] ?? ''; // Jika null, gunakan string kosong
+    final photoUrl = user['photo_url'] ?? '';
 
-    // Tentukan ImageProvider berdasarkan apakah photoUrl adalah URL atau kosong
     ImageProvider profileImageProvider;
-    if (photoUrl.isNotEmpty && (photoUrl.startsWith('http://') || photoUrl.startsWith('https://'))) {
+    if (photoUrl.isEmpty || photoUrl == 'assets/icons/avatar.png') {
+      profileImageProvider = AssetImage('assets/profil.png');
+    } else if (photoUrl.startsWith('http')) {
       profileImageProvider = NetworkImage(photoUrl);
     } else {
-      // Fallback ke aset lokal jika photoUrl kosong atau bukan URL
-      profileImageProvider = const AssetImage('assets/icons/avatar.png');
+      profileImageProvider = AssetImage(photoUrl);
     }
 
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 245, 245, 245),
+      backgroundColor: const Color(0xFFF3F4F8),
       appBar: AppBar(
         title: Text(
           "Detail Member",
           style: GoogleFonts.poppins(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
             color: Colors.black87,
           ),
         ),
@@ -165,39 +200,89 @@ class _DetailMemberScreenState extends State<DetailMemberScreen> {
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(18.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Teruskan profileImageProvider ke _buildProfileCard
             _buildProfileCard(name, email, status, phone, profileImageProvider),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             _buildPointSection(),
-            const SizedBox(height: 16),
-            const Text(
-              'Riwayat Transaksi',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            const SizedBox(height: 8),
-            _isLoadingRiwayat
-                ? const Center(child: CircularProgressIndicator())
-                : _riwayatTransaksi.isEmpty
-                    ? const Text('Belum ada transaksi.')
-                    : Column(
-                        children: _riwayatTransaksi.map((log) {
-                          final dateTime = DateTime.parse(log['created_at']);
-                          final tanggal =
-                              '${dateTime.day} ${_getNamaBulan(dateTime.month)} ${dateTime.year}';
-                          final poin = log['points_earned'] ?? 0;
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.07),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Riwayat Transaksi',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Color(0xFF222B45)),
+                  ),
+                  const SizedBox(height: 8),
+                  _isLoadingRiwayat
+                      ? const Center(child: CircularProgressIndicator())
+                      : _riwayatTransaksi.isEmpty
+                          ? Container(
+                              height: 120,
+                              alignment: Alignment.center,
+                              child: const Text(
+                                'Belum ada transaksi.',
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            )
+                          : ListView.separated(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: _riwayatTransaksi.length,
+                              separatorBuilder: (_, __) =>
+                                  const Divider(height: 18, color: Color(0xFFF3F4F8)),
+                              itemBuilder: (context, idx) {
+                                final log = _riwayatTransaksi[idx];
+                                final dateTime = DateTime.parse(log['created_at']);
+                                final tanggal =
+                                    '${dateTime.day} ${_getNamaBulan(dateTime.month)} ${dateTime.year}';
+                                final poin = log['points_earned'] ?? 0;
+                                final description = log['description'] as String? ?? 'Transaksi';
 
-                          return _buildTransactionItem(
-                            tanggal,
-                            '$poin poin',
-                            'Terkirim',
-                            Colors.green,
-                          );
-                        }).toList(),
-                      ),
+                                Color statusColor = Colors.grey;
+                                String statusText = 'Unknown';
+
+                                if (description.contains('Menerima') &&
+                                    description.contains('affiliate')) {
+                                  statusColor = Colors.green;
+                                  statusText = 'Diterima dari Affiliate';
+                                } else if (description.contains('Dikirim')) {
+                                  statusColor = Colors.blue;
+                                  statusText = 'Dikirim';
+                                }
+
+                                return _buildTransactionItem(
+                                  tanggal,
+                                  '$poin poin',
+                                  statusText,
+                                  statusColor,
+                                );
+                              },
+                            ),
+                ],
+              ),
+            ),
             const SizedBox(height: 32),
           ],
         ),
@@ -205,67 +290,95 @@ class _DetailMemberScreenState extends State<DetailMemberScreen> {
     );
   }
 
-  // Tambahkan parameter ImageProvider ke _buildProfileCard
-  Widget _buildProfileCard(
-      String name, String email, String status, String phone, ImageProvider imageProvider) {
+  Widget _buildProfileCard(String name, String email, String status, String phone,
+      ImageProvider imageProvider) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         children: [
           Row(
             children: [
-              CircleAvatar(
-                radius: 30,
-                backgroundImage: imageProvider, // Gunakan ImageProvider di sini
-                backgroundColor: Colors.grey.shade200, // Background jika gambar belum dimuat
-                // Anda bisa menambahkan child Icon jika ingin menampilkan ikon placeholder
-                // misalnya: child: (imageProvider is NetworkImage && imageProvider.url.isEmpty) ? Icon(Icons.person) : null,
+              Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.green.withOpacity(0.18),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: CircleAvatar(
+                  radius: 34,
+                  backgroundImage: imageProvider,
+                  backgroundColor: Colors.grey.shade200,
+                ),
               ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name,
+              const SizedBox(width: 18),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: GoogleFonts.poppins(
+                        fontSize: 19,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF222B45),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.green[50],
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Text(
+                        status,
+                        style: const TextStyle(
+                            color: Colors.green, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              const Icon(Icons.email, size: 18, color: Colors.grey),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(email,
                     style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.green[100],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      status,
-                      style: const TextStyle(
-                          color: Colors.green, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
+                        color: Color(0xFF555B6A), fontWeight: FontWeight.w500)),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 6),
           Row(
             children: [
-              const Icon(Icons.email, size: 16),
+              const Icon(Icons.phone, size: 18, color: Colors.grey),
               const SizedBox(width: 8),
-              Text(email),
-            ],
-          ),
-          Row(
-            children: [
-              const Icon(Icons.phone, size: 16),
-              const SizedBox(width: 8),
-              Text(phone),
+              Expanded(
+                child: Text(phone,
+                    style: const TextStyle(
+                        color: Color(0xFF555B6A), fontWeight: FontWeight.w500)),
+              ),
             ],
           ),
         ],
@@ -275,27 +388,35 @@ class _DetailMemberScreenState extends State<DetailMemberScreen> {
 
   Widget _buildPointSection() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.07),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Berikan Point',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            'Pengaturan Point Member',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF222B45)),
           ),
-          const SizedBox(height: 12),
-
-          // Kelipatan
+          const SizedBox(height: 14),
           Row(
             children: [
-              const Text("Kelipatan: "),
+              const Text("Kelipatan: ",
+                  style: TextStyle(fontWeight: FontWeight.w500)),
               const SizedBox(width: 8),
               DropdownButton<int>(
                 value: kelipatan,
+                borderRadius: BorderRadius.circular(10),
+                style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF222B45)),
                 items: [5, 10, 20, 25].map((k) {
                   return DropdownMenuItem(
                     value: k,
@@ -306,7 +427,7 @@ class _DetailMemberScreenState extends State<DetailMemberScreen> {
                   if (val != null) {
                     setState(() {
                       kelipatan = val;
-                      _selectedPercentage = val; // reset persentase
+                      _selectedPercentage = val;
                     });
                     _updateKelipatanDanPersentase();
                   }
@@ -314,19 +435,18 @@ class _DetailMemberScreenState extends State<DetailMemberScreen> {
               ),
             ],
           ),
-
-          const SizedBox(height: 12),
-
-          // Persentase
+          const SizedBox(height: 14),
           DropdownButtonFormField<int>(
             value: _selectedPercentage,
             decoration: InputDecoration(
               labelText: 'Pilih Presentase',
+              labelStyle: const TextStyle(fontWeight: FontWeight.w500),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(10),
               ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             ),
+            style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF222B45)),
             items: _percentages.map((percent) {
               return DropdownMenuItem(
                 value: percent,
@@ -349,28 +469,82 @@ class _DetailMemberScreenState extends State<DetailMemberScreen> {
 
   Widget _buildTransactionItem(
       String date, String amount, String status, Color statusColor) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(date, style: const TextStyle(color: Colors.grey)),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(status,
-                    style: TextStyle(
-                        color: statusColor, fontWeight: FontWeight.bold)),
-              ),
-            ],
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
-          Text(amount, style: const TextStyle(fontWeight: FontWeight.bold)),
+        ],
+        border: Border.all(
+          color: statusColor.withOpacity(0.15),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: statusColor.withOpacity(0.13),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              status == 'Diterima dari Affiliate'
+                  ? Icons.arrow_downward_rounded
+                  : Icons.arrow_upward_rounded,
+              color: statusColor,
+              size: 26,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  date,
+                  style: const TextStyle(
+                    color: Color(0xFF8F9BB3),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  status,
+                  style: TextStyle(
+                    color: statusColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: statusColor.withOpacity(0.09),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              amount,
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+                color: statusColor,
+              ),
+            ),
+          ),
         ],
       ),
     );

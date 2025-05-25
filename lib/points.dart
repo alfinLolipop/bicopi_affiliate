@@ -18,18 +18,20 @@ class PointsScreen extends StatefulWidget {
 class _PointsScreen extends State<PointsScreen> {
   int _currentIndex = 1;
   int? currentPoints;
-  String? _currentAffiliateId; // Variabel untuk menyimpan affiliates.id yang benar
+
+  String? _currentAffiliateId;
   List<Map<String, dynamic>> rewards = [];
   bool isLoading = true;
-  final Uuid _uuid = const Uuid(); // Instance Uuid untuk generate ID
+  final Uuid _uuid = const Uuid();
+
 
   @override
   void initState() {
     super.initState();
-    // Pastikan _fetchAffiliateId dipanggil dan diselesaikan
-    // sebelum memuat data lainnya agar _currentAffiliateId tersedia.
+
     _fetchAffiliateId().then((_) {
-      fetchAllData(); // Kemudian panggil fetchAllData setelah affiliate ID diambil
+      fetchAllData();
+
     });
   }
 
@@ -43,13 +45,14 @@ class _PointsScreen extends State<PointsScreen> {
     });
   }
 
-  // Fungsi untuk mengambil ID afiliasi (kolom 'id' di tabel 'affiliates')
-  // yang sesuai dengan user yang sedang login.
+
   Future<void> _fetchAffiliateId() async {
     try {
       final user = Supabase.instance.client.auth.currentUser;
       if (user == null) {
+
         print('User not logged in. Cannot fetch affiliate ID.');
+
         setState(() {
           _currentAffiliateId = null;
         });
@@ -58,23 +61,32 @@ class _PointsScreen extends State<PointsScreen> {
 
       final response = await Supabase.instance.client
           .from('affiliates')
+
+         
+
           .select('id') // <--- Ambil kolom 'id' dari tabel affiliates
           .eq('id_user', user.id) // <--- Cari berdasarkan 'id_user' dari Supabase Auth
+
           .maybeSingle();
 
       setState(() {
         if (response != null && response['id'] != null) {
           _currentAffiliateId = response['id'] as String;
+
+
           print('DEBUG: Fetched _currentAffiliateId (affiliates.id): $_currentAffiliateId');
         } else {
           _currentAffiliateId = null;
           print('Affiliate ID not found for user: ${user.id}. Attempting to create new entry.');
           // Jika afiliasi tidak ditemukan, buat entri baru untuk user ini
+
           _createAffiliateEntry(user.id);
         }
       });
     } catch (e) {
+
       print('Error fetching affiliate ID: $e');
+
       setState(() {
         _currentAffiliateId = null;
       });
@@ -83,6 +95,7 @@ class _PointsScreen extends State<PointsScreen> {
       );
     }
   }
+
 
   // Fungsi untuk membuat entri baru di tabel affiliates jika user belum memiliki
   Future<void> _createAffiliateEntry(String userId) async {
@@ -100,6 +113,7 @@ class _PointsScreen extends State<PointsScreen> {
       print('New affiliate entry created with ID: $newAffiliateId for user: $userId');
     } catch (e) {
       print('Error creating affiliate entry: $e');
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error creating affiliate entry: $e')),
       );
@@ -126,6 +140,8 @@ class _PointsScreen extends State<PointsScreen> {
           currentPoints = response['total_points'];
         });
       } else {
+
+
         // Jika tidak ada points ditemukan, set ke 0
         setState(() {
           currentPoints = 0;
@@ -138,6 +154,7 @@ class _PointsScreen extends State<PointsScreen> {
         }
       }
     } catch (e) {
+
       print('Error fetching points: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error fetching points: $e')),
@@ -151,8 +168,6 @@ class _PointsScreen extends State<PointsScreen> {
           .from('klaim_rewards')
           .select();
 
-      print('Response klaim_rewards: $response');
-
       setState(() {
         rewards = List<Map<String, dynamic>>.from(response).map((r) {
           return {
@@ -163,7 +178,9 @@ class _PointsScreen extends State<PointsScreen> {
         }).toList();
       });
     } catch (e) {
+
       print('Error fetching rewards: $e');
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error fetching rewards: $e')),
       );
@@ -186,7 +203,7 @@ class _PointsScreen extends State<PointsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.white, // BG full putih
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
@@ -195,21 +212,22 @@ class _PointsScreen extends State<PointsScreen> {
           'Points',
           style: GoogleFonts.poppins(
             fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Colors.black,
+            fontWeight: FontWeight.bold,
+            color: Colors.grey[800],
+            letterSpacing: 1,
           ),
         ),
         centerTitle: true,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(2.0),
           child: Container(
-            color: Colors.green,
+            color: Colors.green, // Garis hijau seperti di home
             height: 2.0,
           ),
         ),
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: Colors.grey))
           : Column(
               children: [
                 Container(
@@ -219,28 +237,48 @@ class _PointsScreen extends State<PointsScreen> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
-                    boxShadow: const [
-                      BoxShadow(color: Colors.black12, blurRadius: 6, spreadRadius: 1),
+
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.13),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+
                     ],
+                    border: Border.all(color: Colors.grey[200]!),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         "Point Saat Ini",
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey[700],
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         currentPoints != null ? "$currentPoints" : "0",
-                        style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.green),
+                        style: GoogleFonts.poppins(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
+                        ),
                       ),
                     ],
                   ),
                 ),
                 Expanded(
                   child: rewards.isEmpty
-                      ? const Center(child: Text("Tidak ada reward tersedia"))
+                      ? Center(
+                          child: Text(
+                            "Tidak ada reward tersedia",
+                            style: GoogleFonts.poppins(color: Colors.grey[600]),
+                          ),
+                        )
                       : ListView.builder(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           itemCount: rewards.length,
@@ -257,6 +295,8 @@ class _PointsScreen extends State<PointsScreen> {
                 ),
               ],
             ),
+
+
       bottomNavigationBar: BottomNavigationBar(
         backgroundColor: Colors.white,
         type: BottomNavigationBarType.fixed,
@@ -270,6 +310,7 @@ class _PointsScreen extends State<PointsScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.notifications), label: 'Notifikasi'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
+
       ),
     );
   }
@@ -280,17 +321,24 @@ class _PointsScreen extends State<PointsScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.13),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
         ],
+        border: Border.all(color: Colors.grey[200]!),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          Text(title,
+              style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey[800])),
           const SizedBox(height: 4),
-          Text(description, style: const TextStyle(color: Colors.black54)),
+          Text(description,
+              style: GoogleFonts.poppins(color: Colors.grey[600], fontSize: 13.5)),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -298,10 +346,11 @@ class _PointsScreen extends State<PointsScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
+                  color: Colors.grey.shade200,
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Text("$points Points", style: const TextStyle(fontWeight: FontWeight.bold)),
+                child: Text("$points Points",
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Colors.grey[800])),
               ),
               ElevatedButton(
                 onPressed: currentPoints != null && currentPoints! >= points
@@ -310,8 +359,11 @@ class _PointsScreen extends State<PointsScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  elevation: 0,
                 ),
-                child: const Text("Klaim reward", style: TextStyle(color: Colors.white)),
+                child: Text("Klaim reward",
+                    style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600)),
               ),
             ],
           ),
@@ -364,11 +416,13 @@ class _PointsScreen extends State<PointsScreen> {
                   return;
                 }
 
-                // PENTING: Pastikan _currentAffiliateId sudah ada sebelum digunakan
+
+
                 if (_currentAffiliateId == null) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Error: ID afiliasi tidak ditemukan. Coba restart aplikasi atau login ulang.')),
                   );
+
                   print('Error: _currentAffiliateId is NULL when trying to open PopupPage.');
                   return;
                 }
@@ -394,13 +448,16 @@ class _PointsScreen extends State<PointsScreen> {
                 String transactionId = _uuid.v4();
                 String affiliateIdToSend = _currentAffiliateId!; // <--- Kirim ID afiliasi yang BENAR
 
+
                 final bool? redemptionSuccessful = await showDialog<bool>(
                   context: context,
                   builder: (context) => PopupPage(
                     title: title,
                     points: points,
                     transactionId: transactionId,
+
                     affiliateId: affiliateIdToSend, // <--- Gunakan ID afiliasi yang sudah diambil
+
                     description: description,
                   ),
                 );
@@ -408,6 +465,8 @@ class _PointsScreen extends State<PointsScreen> {
                 if (redemptionSuccessful == true) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Penukaran berhasil dicatat!')),
+
+
                   );
                   await fetchPointsFromSupabase(); // Perbarui poin setelah sukses
                 } else {

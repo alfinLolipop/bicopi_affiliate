@@ -81,7 +81,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(
+
         builder: (context) => const LogoutSuccessScreen(), 
+
       ),
       (route) => false,
     );
@@ -127,11 +129,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: Text('Profile',
-            style: GoogleFonts.poppins(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Colors.black)),
+        title: Text(
+          'Profile',
+          style: GoogleFonts.poppins(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.grey[800],
+            letterSpacing: 1,
+          ),
+        ),
         centerTitle: true,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(2.0),
@@ -180,16 +186,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     },
                   ),
                   const SizedBox(height: 8),
-                  ElevatedButton.icon(
-                    onPressed: () {},
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey[200],
-                      foregroundColor: Colors.black,
-                    ),
-                    icon: const Icon(Icons.copy, size: 14),
-                    label: Text('Copy affiliate link',
-                        style: GoogleFonts.poppins(fontSize: 12)),
-                  ),
                 ],
               ),
             ),
@@ -397,65 +393,77 @@ class _TermsAndConditionsScreenState extends State<TermsAndConditionsScreen> {
     );
   }
 
- List<Widget> _buildTermsIndo() => [
-          _buildTermsItem('📘 Panduan Pengguna', ''),
-          _buildTermsItem('1. Apa Itu Aplikasi Ini?',
-              'Aplikasi ini digunakan untuk mengelola poin, komisi, dan member dalam sistem affiliate. '
-              'Pengguna dapat melihat riwayat transaksi, menambahkan member baru, dan menukarkan poin.'),
-          _buildTermsItem('2. Fitur-Fitur Utama',
-              'Dashboard: Melihat total poin, komisi, dan daftar member.\n\n'
-              'Members: Menampilkan daftar semua member yang kamu rekrut.\n\n'
-              'Detail Member: Menambahkan atau mengedit poin untuk member tertentu.\n\n'
-              'Poin Detail: Menukarkan poin dan melihat status konfirmasi dari kasir.\n\n'
-              'Notifikasi: Melihat pengumuman dan update dari sistem.\n\n'
-              'Profil: Melihat akun kamu dan mengubah kata sandi.\n\n'
-              'Logout: Keluar dari aplikasi.'),
-          _buildTermsItem('3. Cara Menggunakan Aplikasi',
-              'Login menggunakan email dan password.\n\n'
-              'Di Dashboard, cek total poin dan komisi kamu.\n\n'
-              'Untuk menambah member, klik tab Members lalu pilih tombol tambah.\n\n'
-              'Klik nama member untuk masuk ke halaman Detail Member dan isi poinnya.\n\n'
-              'Untuk menukar poin, masuk ke Poin Detail dan ajukan penukaran.\n\n'
-              'Cek notifikasi secara berkala untuk update terbaru.'),
-          _buildTermsItem('4. FAQ (Pertanyaan Umum)',
-              'Bagaimana cara menambah poin untuk member?\n→ Masuk ke halaman Member, pilih nama member, lalu isi form poin.\n\n'
-              'Kenapa poin saya belum ditukar?\n→ Proses penukaran harus dikonfirmasi dulu oleh kasir.'),
-          _buildTermsItem('5. Hubungi Kami',
-              'Jika mengalami kendala, hubungi kami melalui:\n\n'
-              '- Email\n'
-              '- WhatsApp\n'
-              '- Link ke Customer Service'),
-        ];
 
-        List<Widget> _buildTermsEnglish() => [
-          _buildTermsItem('📘 User Guide', ''),
-          _buildTermsItem('1. What Is This App?',
-              'This app is used to manage points, commissions, and members in an affiliate system. '
-              'Users can view transaction history, add new members, and redeem points.'),
-          _buildTermsItem('2. Main Features',
-              'Dashboard: View total points, commissions, and member list.\n\n'
-              'Members: Display a list of all members you recruited.\n\n'
-              'Member Detail: Add or edit points for specific members.\n\n'
-              'Points Detail: Redeem points and check cashier confirmation status.\n\n'
-              'Notifications: View system announcements and updates.\n\n'
-              'Profile: View your account and change your password.\n\n'
-              'Logout: Sign out of the app.'),
-          _buildTermsItem('3. How to Use the App',
-              'Log in using your email and password.\n\n'
-              'On the Dashboard, check your total points and commissions.\n\n'
-              'To add a member, go to the Members tab and tap the add button.\n\n'
-              'Tap a members name to open their Detail page and enter points.\n\n'
-              'To redeem points, go to Points Detail and submit a redemption request.\n\n'
-              'Check notifications regularly for the latest updates.'),
-          _buildTermsItem('4. FAQ (Frequently Asked Questions)',
-              'How do I add points for a member?\n→ Go to the Member page, select the member\'s name, and fill out the point form.\n\n'
-              'Why havent my points been redeemed yet?\n→ The redemption process must first be confirmed by the cashier.'),
-          _buildTermsItem('5. Contact Us',
-              'If you experience any issues, contact us via:\n\n'
-              '- Email\n'
-              '- WhatsApp\n'
-              '- Customer Service link'),
-        ];
+  List<Widget> _buildTermsIndo() => [
+        _buildTermsItem('📘 Panduan Pengguna', ''),
+        _buildTermsItem(
+            '1. Apa Itu Aplikasi Ini?',
+            'Aplikasi ini digunakan untuk mengelola poin, komisi, dan member dalam sistem affiliate. '
+                'Pengguna dapat melihat riwayat transaksi, menambahkan member baru, dan menukarkan poin.'),
+        _buildTermsItem(
+            '2. Fitur-Fitur Utama',
+            'Dashboard: Melihat total poin, komisi, dan daftar member.\n\n'
+                'Members: Menampilkan daftar semua member yang kamu rekrut.\n\n'
+                'Detail Member: Menambahkan atau mengedit poin untuk member tertentu.\n\n'
+                'Poin Detail: Menukarkan poin dan melihat status konfirmasi dari kasir.\n\n'
+                'Notifikasi: Melihat pengumuman dan update dari sistem.\n\n'
+                'Profil: Melihat akun kamu dan mengubah kata sandi.\n\n'
+                'Logout: Keluar dari aplikasi.'),
+        _buildTermsItem(
+            '3. Cara Menggunakan Aplikasi',
+            'Login menggunakan email dan password.\n\n'
+                'Di Dashboard, cek total poin dan komisi kamu.\n\n'
+                'Untuk menambah member, klik tab Members lalu pilih tombol tambah.\n\n'
+                'Klik nama member untuk masuk ke halaman Detail Member dan isi poinnya.\n\n'
+                'Untuk menukar poin, masuk ke Poin Detail dan ajukan penukaran.\n\n'
+                'Cek notifikasi secara berkala untuk update terbaru.'),
+        _buildTermsItem(
+            '4. FAQ (Pertanyaan Umum)',
+            'Bagaimana cara menambah poin untuk member?\n→ Masuk ke halaman Member, pilih nama member, lalu isi form poin.\n\n'
+                'Kenapa poin saya belum ditukar?\n→ Proses penukaran harus dikonfirmasi dulu oleh kasir.'),
+        _buildTermsItem(
+            '5. Hubungi Kami',
+            'Jika mengalami kendala, hubungi kami melalui:\n\n'
+                '- Email\n'
+                '- WhatsApp\n'
+                '- Link ke Customer Service'),
+      ];
+
+  List<Widget> _buildTermsEnglish() => [
+        _buildTermsItem('📘 User Guide', ''),
+        _buildTermsItem(
+            '1. What Is This App?',
+            'This app is used to manage points, commissions, and members in an affiliate system. '
+                'Users can view transaction history, add new members, and redeem points.'),
+        _buildTermsItem(
+            '2. Main Features',
+            'Dashboard: View total points, commissions, and member list.\n\n'
+                'Members: Display a list of all members you recruited.\n\n'
+                'Member Detail: Add or edit points for specific members.\n\n'
+                'Points Detail: Redeem points and check cashier confirmation status.\n\n'
+                'Notifications: View system announcements and updates.\n\n'
+                'Profile: View your account and change your password.\n\n'
+                'Logout: Sign out of the app.'),
+        _buildTermsItem(
+            '3. How to Use the App',
+            'Log in using your email and password.\n\n'
+                'On the Dashboard, check your total points and commissions.\n\n'
+                'To add a member, go to the Members tab and tap the add button.\n\n'
+                'Tap a members name to open their Detail page and enter points.\n\n'
+                'To redeem points, go to Points Detail and submit a redemption request.\n\n'
+                'Check notifications regularly for the latest updates.'),
+        _buildTermsItem(
+            '4. FAQ (Frequently Asked Questions)',
+            'How do I add points for a member?\n→ Go to the Member page, select the member\'s name, and fill out the point form.\n\n'
+                'Why havent my points been redeemed yet?\n→ The redemption process must first be confirmed by the cashier.'),
+        _buildTermsItem(
+            '5. Contact Us',
+            'If you experience any issues, contact us via:\n\n'
+                '- Email\n'
+                '- WhatsApp\n'
+                '- Customer Service link'),
+      ];
+
 
   Widget _buildTermsItem(String title, String content) {
     return Column(

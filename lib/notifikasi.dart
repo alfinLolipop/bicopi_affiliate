@@ -6,7 +6,6 @@ import 'points.dart';
 import 'profil.dart';
 import 'package:intl/intl.dart';
 
-
 void main() {
   runApp(MyApp());
 }
@@ -26,30 +25,24 @@ class NotificationScreen extends StatefulWidget {
 
   @override
   _NotificationScreenState createState() => _NotificationScreenState();
-  
 }
 
 class _NotificationScreenState extends State<NotificationScreen> {
-  
   int _currentIndex = 2;
-  
 
-    // =======================  ganti fungsi ini saja  =======================
   Future<List<Map<String, dynamic>>> fetchNotifications() async {
     final userId = Supabase.instance.client.auth.currentUser?.id;
     if (userId == null) return [];
 
-    // 1. Ambil tepat 1 baris affiliate milik user (duplikat tidak bikin 406)
     final affiliate = await Supabase.instance.client
         .from('affiliates')
         .select('id')
         .eq('id_user', userId)
-        .limit(1)            // batasi di server
-        .single();           // minta object, error kalau 0 baris
+        .limit(1)
+        .single();
 
     final affiliateId = affiliate['id'];
 
-    // 2. Ambil daftar notifikasi untuk affiliate itu
     final notificationResponse = await Supabase.instance.client
         .from('notifications')
         .select()
@@ -58,11 +51,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
     return List<Map<String, dynamic>>.from(notificationResponse);
   }
-  // ======================================================================
-
-
-
-  
 
   void _onTabTapped(int index) {
     setState(() {
@@ -73,6 +61,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white, // BG full putih
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
@@ -81,37 +70,51 @@ class _NotificationScreenState extends State<NotificationScreen> {
           'Notifikasi',
           style: GoogleFonts.poppins(
             fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Colors.black,
+            fontWeight: FontWeight.bold,
+            color: Colors.grey[800],
+            letterSpacing: 1,
           ),
         ),
         centerTitle: true,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(2.0),
           child: Container(
-            color: Colors.green,
+            color: Colors.green, // Garis hijau seperti di home/points
             height: 2.0,
           ),
         ),
       ),
       body: Container(
         color: Colors.white,
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         child: FutureBuilder<List<Map<String, dynamic>>>(
           future: fetchNotifications(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
+              return const Center(child: CircularProgressIndicator(color: Colors.grey));
             } else if (snapshot.hasError) {
-              return Center(child: Text('Terjadi kesalahan: ${snapshot.error}'));
+              return Center(
+                  child: Text('Terjadi kesalahan: ${snapshot.error}',
+                      style: GoogleFonts.poppins(color: Colors.red, fontSize: 14)));
             } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-              return const Center(child: Text('Tidak ada notifikasi.'));
+              return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.notifications_off, color: Colors.grey[400], size: 60),
+                      const SizedBox(height: 10),
+                      Text('Tidak ada notifikasi.',
+                          style: GoogleFonts.poppins(
+                              color: Colors.grey[600], fontSize: 16, fontWeight: FontWeight.w500)),
+                    ],
+                  ));
             }
 
             final notifications = snapshot.data!;
 
-            return ListView.builder(
+            return ListView.separated(
               itemCount: notifications.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
                 final item = notifications[index];
                 return notificationCard(
@@ -125,38 +128,55 @@ class _NotificationScreenState extends State<NotificationScreen> {
           },
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: Colors.white,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.green,
-        unselectedItemColor: Colors.grey,
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          if (index != _currentIndex) {
-            Widget nextScreen;
-            if (index == 0) {
-              nextScreen = const HomeScreen();
-            } else if (index == 1) {
-              nextScreen = const PointsScreen();
-            } else if (index == 3) {
-              nextScreen = const ProfileScreen();
-            } else {
-              return;
-            }
+       bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: Colors.grey[300]!, width: 1)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.07),
+              blurRadius: 8,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          backgroundColor: Colors.white,
+          type: BottomNavigationBarType.fixed,
+          selectedItemColor: Colors.green,
+          unselectedItemColor: Colors.grey[400],
+          currentIndex: _currentIndex,
+          elevation: 0,
+          showUnselectedLabels: true,
+          selectedLabelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+          unselectedLabelStyle: GoogleFonts.poppins(),
+          onTap: (index) {
+            if (index != _currentIndex) {
+              Widget nextScreen;
+              if (index == 0) {
+                nextScreen = const HomeScreen();
+              } else if (index == 1) {
+                nextScreen = const PointsScreen();
+              } else if (index == 3) {
+                nextScreen = const ProfileScreen();
+              } else {
+                return;
+              }
 
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => nextScreen),
-            );
-          }
-        },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.star), label: 'Points'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.notifications), label: 'Notifikasi'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-        ],
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => nextScreen),
+              );
+            }
+          },
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+            BottomNavigationBarItem(icon: Icon(Icons.star), label: 'Points'),
+            BottomNavigationBarItem(
+                icon: Icon(Icons.notifications), label: 'Notifikasi'),
+            BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+          ],
+        ),
       ),
     );
   }
@@ -164,28 +184,45 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
 Widget notificationCard(String title, String subtitle, String iconPath, String date) {
   return Container(
-    margin: const EdgeInsets.only(bottom: 16),
-    padding: const EdgeInsets.all(14),
+    padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
-      color: Colors.grey.shade100,
-      borderRadius: BorderRadius.circular(16),
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(18),
       boxShadow: [
         BoxShadow(
-          color: Colors.grey.withOpacity(0.1),
-          blurRadius: 6,
-          offset: const Offset(0, 3),
+          color: Colors.grey.withOpacity(0.13),
+          blurRadius: 10,
+          offset: const Offset(0, 4),
         ),
       ],
+      border: Border.all(color: Colors.grey[200]!),
     ),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        CircleAvatar(
-          radius: 26,
-          backgroundColor: Colors.white,
-          backgroundImage: AssetImage(iconPath),
+        Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              colors: [Colors.grey[200]!, Colors.grey[300]!],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.09),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: CircleAvatar(
+            radius: 28,
+            backgroundColor: Colors.transparent,
+            backgroundImage: AssetImage(iconPath),
+          ),
         ),
-        const SizedBox(width: 14),
+        const SizedBox(width: 16),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -193,26 +230,33 @@ Widget notificationCard(String title, String subtitle, String iconPath, String d
               Text(
                 title,
                 style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: GoogleFonts.poppins(
-                  fontSize: 13,
-                  color: Colors.grey[700],
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.grey[800],
                 ),
               ),
               const SizedBox(height: 6),
               Text(
-                _formatDate(date),
+                subtitle,
                 style: GoogleFonts.poppins(
-                  fontSize: 12,
-                  color: Colors.grey[500],
+                  fontSize: 13.5,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w400,
                 ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Icon(Icons.access_time, size: 14, color: Colors.grey[400]),
+                  const SizedBox(width: 4),
+                  Text(
+                    _formatDate(date),
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -230,4 +274,3 @@ String _formatDate(String dateStr) {
     return dateStr;
   }
 }
-

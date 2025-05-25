@@ -9,9 +9,6 @@ import 'notifikasi.dart';
 import 'profil.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:week_of_year/week_of_year.dart';
-
-
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -45,10 +42,27 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> _commissionData = [];
+  List<Map<String, dynamic>> _members = [];
+  int _totalPoints = 0;
+  int _currentIndex = 0;
+  String _selectedFilter = 'Daily';
+  String _userName = '...';
+
+  List<FlSpot> _chartData = [];
+  List<String> _xLabels = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _getUserData();
+    _fetchMembers();
+    _fetchChartData();
+    _fetchTotalPoints();
+    _fetchCommissionData();
+  }
 
   Future<void> _fetchCommissionData() async {
     final user = Supabase.instance.client.auth.currentUser;
-
     if (user != null) {
       try {
         final response = await Supabase.instance.client
@@ -66,13 +80,10 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  List<Map<String, dynamic>> _members = [];
   Future<void> _fetchMembers() async {
     final user = Supabase.instance.client.auth.currentUser;
-
     if (user != null) {
       try {
-        // Ambil ID affiliate berdasarkan id_user
         final affiliate = await Supabase.instance.client
             .from('affiliates')
             .select('id')
@@ -86,26 +97,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
         final affiliateId = affiliate['id'];
 
-        // Ambil hanya member yang affiliate_id = affiliateId
-        // Di dalam _fetchMembers()
-final response = await Supabase.instance.client
-    .from('members')
-    .select('id_user, joined_at, users(username, photo_url)')
-    .eq('affiliate_id', affiliateId)
-    .order('joined_at', ascending: false);
+        final response = await Supabase.instance.client
+            .from('members')
+            .select('id_user, joined_at, users(username, photo_url)')
+            .eq('affiliate_id', affiliateId)
+            .order('joined_at', ascending: false);
 
-print('RAW Response from Supabase: $response'); // Periksa seluruh respons
-
-setState(() {
-  _members = List<Map<String, dynamic>>.from(response);
-});
-
-// Tambahkan loop untuk memeriksa setiap anggota
-for (var member in _members) {
-  final String? photoUrl = member['users']?['photo_url'];
-  final String? username = member['users']?['username'];
-  print('Member: $username, Photo URL: $photoUrl'); // Cetak URL yang diterima
-}
+        setState(() {
+          _members = List<Map<String, dynamic>>.from(response);
+        });
       } catch (e) {
         print('Gagal mengambil data members: $e');
       }
@@ -114,7 +114,6 @@ for (var member in _members) {
 
   Future<void> _fetchTotalPoints() async {
     final user = Supabase.instance.client.auth.currentUser;
-
     if (user != null) {
       try {
         final response = await Supabase.instance.client
@@ -136,102 +135,15 @@ for (var member in _members) {
     }
   }
 
-  int _totalPoints = 0;
-  int _currentIndex = 0;
-  String _selectedFilter = 'Daily';
-  String _userName = '...';
-
-  @override
-  void initState() {
-    final user = Supabase.instance.client.auth.currentUser;
-    print('User ID login: ${user?.id}');
-
-    super.initState();
-    _getUserData();
-    _fetchMembers();
-    _fetchChartData();
-    _fetchTotalPoints();
-    _fetchCommissionData();
-  }
-
-  List<FlSpot> _chartData = [];
-
-  
-
-  Future<void> _fetchChartData() async {
-  final user = Supabase.instance.client.auth.currentUser;
-  if (user == null) return;
-
-  String dateTrunc = switch (_selectedFilter) {
-    'Weekly'  => 'week',
-    'Monthly' => 'month',
-    _         => 'day',
-  };
-
-  try {
-    // Ambil ID affiliate berdasarkan id_user
-    final affiliate = await Supabase.instance.client
-        .from('affiliates')
-        .select('id')
-        .eq('id_user', user.id)
-        .maybeSingle();
-
-    if (affiliate == null) {
-      print('Affiliate tidak ditemukan');
-      return;
-    }
-
-    final affiliateId = affiliate['id'];
-
-    final response = await Supabase.instance.client
-        .from('affiliate_points_log')
-        .select('created_at, points_earned')
-        .eq('affiliate_id', affiliateId)
-        .order('created_at', ascending: true);
-
-    final Map<String, double> grouped = {};
-    for (var item in response) {
-      final createdAt = DateTime.parse(item['created_at']);
-      final key = switch (dateTrunc) {
-        'week'  => '${createdAt.year}-${createdAt.weekOfYear}',
-        'month' => '${createdAt.year}-${createdAt.month}',
-        _       => '${createdAt.year}-${createdAt.month}-${createdAt.day}',
-      };
-      grouped[key] = (grouped[key] ?? 0) +
-          (item['points_earned'] as num).toDouble();
-    }
-
-    final sortedKeys = grouped.keys.toList()..sort();
-    final spots = <FlSpot>[
-      for (int i = 0; i < sortedKeys.length; i++)
-        FlSpot(i.toDouble(), grouped[sortedKeys[i]]!)
-    ];
-
-    setState(() {
-      _chartData = spots.isEmpty ? [const FlSpot(0, 0)] : spots;
-    });
-  } catch (e) {
-    print('Gagal mengambil data grafik: $e');
-    setState(() {
-      _chartData = [const FlSpot(0, 0)];
-    });
-  }
-}
-
-
-
   Future<void> _getUserData() async {
     final user = Supabase.instance.client.auth.currentUser;
-
     if (user != null) {
       try {
         final response = await Supabase.instance.client
             .from('users')
             .select('username')
-            .eq('id_user', user.id) // ganti jadi 'id' bukan 'id_user'
+            .eq('id_user', user.id)
             .maybeSingle();
-
-        print('Data username: $response');
 
         if (response != null && response['username'] != null) {
           setState(() {
@@ -245,6 +157,101 @@ for (var member in _members) {
       }
     } else {
       print('User belum login');
+    }
+  }
+
+  Future<void> _fetchChartData() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+
+    DateTime now = DateTime.now();
+    List<String> xLabels = [];
+    Map<String, double> grouped = {};
+
+    try {
+      final affiliate = await Supabase.instance.client
+          .from('affiliates')
+          .select('id')
+          .eq('id_user', user.id)
+          .maybeSingle();
+
+      if (affiliate == null) {
+        print('Affiliate tidak ditemukan');
+        return;
+      }
+
+      final affiliateId = affiliate['id'];
+      final response = await Supabase.instance.client
+          .from('affiliate_points_log')
+          .select('created_at, points_earned')
+          .eq('affiliate_id', affiliateId)
+          .order('created_at', ascending: true);
+
+      if (_selectedFilter == 'Daily') {
+        for (int i = 0; i < 24; i++) {
+          String hour = i.toString().padLeft(2, '0') + ":00";
+          xLabels.add(hour);
+          grouped[hour] = 0;
+        }
+        for (var item in response) {
+          final createdAt = DateTime.parse(item['created_at']).toLocal();
+          if (createdAt.year == now.year &&
+              createdAt.month == now.month &&
+              createdAt.day == now.day) {
+            String hour = createdAt.hour.toString().padLeft(2, '0') + ":00";
+            grouped[hour] = (grouped[hour] ?? 0) +
+                (item['points_earned'] as num).toDouble();
+          }
+        }
+      } else if (_selectedFilter == 'Weekly') {
+        List<String> days = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+        DateTime monday = now.subtract(Duration(days: now.weekday - 1));
+        for (int i = 0; i < 7; i++) {
+          String label = days[i];
+          xLabels.add(label);
+          grouped[label] = 0;
+        }
+        for (var item in response) {
+          final createdAt = DateTime.parse(item['created_at']).toLocal();
+          if (createdAt.isAfter(monday.subtract(const Duration(days: 1))) &&
+              createdAt.isBefore(monday.add(const Duration(days: 7)))) {
+            String label = days[createdAt.weekday - 1];
+            grouped[label] = (grouped[label] ?? 0) +
+                (item['points_earned'] as num).toDouble();
+          }
+        }
+      } else if (_selectedFilter == 'Monthly') {
+        int daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+        for (int i = 1; i <= daysInMonth; i++) {
+          String label = i.toString();
+          xLabels.add(label);
+          grouped[label] = 0;
+        }
+        for (var item in response) {
+          final createdAt = DateTime.parse(item['created_at']).toLocal();
+          if (createdAt.year == now.year && createdAt.month == now.month) {
+            String label = createdAt.day.toString();
+            grouped[label] = (grouped[label] ?? 0) +
+                (item['points_earned'] as num).toDouble();
+          }
+        }
+      }
+
+      final spots = <FlSpot>[
+        for (int i = 0; i < xLabels.length; i++)
+          FlSpot(i.toDouble(), (grouped[xLabels[i]] ?? 0).toDouble())
+      ];
+
+      setState(() {
+        _chartData = spots;
+        _xLabels = xLabels;
+      });
+    } catch (e) {
+      print('Gagal mengambil data grafik: $e');
+      setState(() {
+        _chartData = [const FlSpot(0, 0)];
+        _xLabels = [];
+      });
     }
   }
 
@@ -342,50 +349,255 @@ for (var member in _members) {
                               setState(() {
                                 _selectedFilter = newValue!;
                               });
-                              _fetchChartData(); // panggil ulang saat filter berubah
+                              _fetchChartData();
                             },
                           ),
                         ],
                       ),
                       SizedBox(height: 12),
                       Container(
-                        height: 200,
-                        padding: EdgeInsets.symmetric(horizontal: 8),
+                        height: 220,
+                        padding: const EdgeInsets.all(0),
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(8),
+                          gradient: LinearGradient(
+                            colors: [Colors.green.shade100, Colors.white],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.green.withOpacity(0.08),
+                              blurRadius: 16,
+                              offset: const Offset(0, 8),
+                            )
+                          ],
                         ),
-                        child: _chartData.isEmpty
-                            ? Center(
-                               child: Text('Tidak ada data',
-                                    style: GoogleFonts.poppins()))
-                            : LineChart(
-                                LineChartData(
-                                  titlesData: FlTitlesData(show: false),
-                                  borderData: FlBorderData(show: false),
-                                  gridData: FlGridData(show: false),
-                                  lineBarsData: [
-                                    LineChartBarData(
-                                      spots: _chartData,
-                                      isCurved: true,
-                                      color: Colors.green,
-                                      barWidth: 3,
-                                      isStrokeCapRound: true,
-                                      belowBarData: BarAreaData(
-                                        show: true,
-                                        gradient: LinearGradient(
-                                          colors: [
-                                            Colors.green.withOpacity(0.4),
-                                            Colors.green.withOpacity(0.0),
-                                          ],
-                                          begin: Alignment.topCenter,
-                                          end: Alignment.bottomCenter,
-                                        ),
-                                      ),
-                                    )
-                                  ],
+                        child: Stack(
+                          children: [
+                            Positioned(
+                              top: -30,
+                              left: -30,
+                              child: Container(
+                                width: 80,
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.green.withOpacity(0.10),
                                 ),
                               ),
+                            ),
+                            Positioned(
+                              bottom: -20,
+                              right: -20,
+                              child: Container(
+                                width: 60,
+                                height: 60,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.green.withOpacity(0.08),
+                                ),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: _chartData.isEmpty
+                                  ? Center(
+                                      child: Text(
+                                        'Tidak ada data komisi untuk periode ini.',
+                                        style: GoogleFonts.poppins(
+                                            fontSize: 14, color: Colors.grey),
+                                      ),
+                                    )
+                                  : LineChart(
+                                      LineChartData(
+                                        minY: 0,
+                                        maxY: _chartData.isNotEmpty
+                                            ? _chartData
+                                                    .map((spot) => spot.y)
+                                                    .reduce((a, b) =>
+                                                        a > b ? a : b) *
+                                                1.2
+                                            : 1,
+                                        lineTouchData: LineTouchData(
+                                          enabled: true,
+                                          handleBuiltInTouches: true,
+                                          touchTooltipData:
+                                              LineTouchTooltipData(
+                                            tooltipBgColor: Colors
+                                                .green.shade700
+                                                .withOpacity(0.9),
+                                            getTooltipItems: (touchedSpots) {
+                                              return touchedSpots.map((spot) {
+                                                final idx = spot.x.toInt();
+                                                String label = _xLabels
+                                                            .isNotEmpty &&
+                                                        idx < _xLabels.length
+                                                    ? _xLabels[idx]
+                                                    : '';
+                                                return LineTooltipItem(
+                                                  '$label\n+${spot.y.toInt()} poin',
+                                                  GoogleFonts.poppins(
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 13,
+                                                  ),
+                                                );
+                                              }).toList();
+                                            },
+                                          ),
+                                        ),
+                                        titlesData: FlTitlesData(
+                                          leftTitles: AxisTitles(
+                                            sideTitles: SideTitles(
+                                              showTitles: true,
+                                              reservedSize: 40,
+                                              getTitlesWidget: (value, meta) {
+                                                if (value == meta.max)
+                                                  return const Text('');
+                                                String label = value >= 1000
+                                                    ? '${(value / 1000).toStringAsFixed(1)}K'
+                                                    : value.toInt().toString();
+                                                return Text(
+                                                  label,
+                                                  style: const TextStyle(
+                                                      fontSize: 10),
+                                                  textAlign: TextAlign.left,
+                                                );
+                                              },
+                                              // FIX: interval tidak boleh 0
+                                              interval: (() {
+                                                if (_chartData.isEmpty)
+                                                  return 1.0;
+                                                double maxY = _chartData
+                                                            .length ==
+                                                        1
+                                                    ? _chartData.first.y
+                                                    : _chartData
+                                                        .map((spot) => spot.y)
+                                                        .reduce((a, b) =>
+                                                            a > b ? a : b);
+                                                double interval =
+                                                    (maxY / 4).ceilToDouble();
+                                                return interval > 0
+                                                    ? interval
+                                                    : 1.0;
+                                              })(),
+                                            ),
+                                          ),
+                                          bottomTitles: AxisTitles(
+                                            sideTitles: SideTitles(
+                                              showTitles: true,
+                                              getTitlesWidget: (value, meta) {
+                                                final index = value.toInt();
+                                                if (index < 0 ||
+                                                    index >= _xLabels.length) {
+                                                  return const SizedBox();
+                                                }
+                                                bool showLabel = false;
+                                                if (_selectedFilter ==
+                                                    'Daily') {
+                                                  showLabel = index % 3 == 0 ||
+                                                      index ==
+                                                          _xLabels.length - 1;
+                                                } else if (_selectedFilter ==
+                                                    'Weekly') {
+                                                  showLabel = true;
+                                                } else {
+                                                  showLabel = index %
+                                                              ((_xLabels.length /
+                                                                      6)
+                                                                  .ceil()) ==
+                                                          0 ||
+                                                      index ==
+                                                          _xLabels.length - 1;
+                                                }
+                                                return showLabel
+                                                    ? SideTitleWidget(
+                                                        axisSide: meta.axisSide,
+                                                        space: 10,
+                                                        child: Transform.rotate(
+                                                          angle: -0.5,
+                                                          child: Text(
+                                                            _xLabels[index],
+                                                            style: const TextStyle(
+                                                                fontSize: 11,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w500),
+                                                            overflow:
+                                                                TextOverflow
+                                                                    .ellipsis,
+                                                          ),
+                                                        ),
+                                                      )
+                                                    : const SizedBox();
+                                              },
+                                              interval: 1,
+                                              reservedSize: 36,
+                                            ),
+                                          ),
+                                          rightTitles: AxisTitles(
+                                              sideTitles: SideTitles(
+                                                  showTitles: false)),
+                                          topTitles: AxisTitles(
+                                              sideTitles: SideTitles(
+                                                  showTitles: false)),
+                                        ),
+                                        gridData: FlGridData(
+                                          show: true,
+                                          drawHorizontalLine: true,
+                                          drawVerticalLine: false,
+                                          getDrawingHorizontalLine: (value) =>
+                                              FlLine(
+                                            color:
+                                                Colors.green.withOpacity(0.10),
+                                            strokeWidth: 1,
+                                          ),
+                                        ),
+                                        borderData: FlBorderData(
+                                          show: true,
+                                          border: Border.all(
+                                              color: Colors.green
+                                                  .withOpacity(0.15),
+                                              width: 1),
+                                        ),
+                                        lineBarsData: [
+                                          LineChartBarData(
+                                            isCurved: true,
+                                            color: Colors.green.shade700,
+                                            barWidth: 2.5,
+                                            isStrokeCapRound: true,
+                                            belowBarData: BarAreaData(
+                                              show: true,
+                                              color: Colors.green
+                                                  .withOpacity(0.10),
+                                              gradient: LinearGradient(
+                                                colors: [
+                                                  Colors.green
+                                                      .withOpacity(0.18),
+                                                  Colors.green.withOpacity(0.01)
+                                                ],
+                                                begin: Alignment.topCenter,
+                                                end: Alignment.bottomCenter,
+                                              ),
+                                            ),
+                                            dotData: FlDotData(
+                                              show: false, // bulat-bulat hilang
+                                            ),
+                                            spots: _chartData,
+                                            shadow: const Shadow(
+                                              color: Color(0x22000000),
+                                              blurRadius: 6,
+                                              offset: Offset(2, 4),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -502,13 +714,94 @@ for (var member in _members) {
             ],
           ),
           SizedBox(height: 12),
-          ..._members.take(3).map((member) => MemberItem(
-                name: member['users']?['username'] ?? 'Tidak diketahui',
-                date: member['joined_at'] != null
-                    ? member['joined_at'].toString().substring(0, 10)
-                    : 'Tidak diketahui',
-                image: member['users']?['photo_url'] ?? 'assets/profil.png', // <--- BARIS YANG DIMODIFIKASI
-              )),
+          _members.isEmpty
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24.0),
+                    child: Text(
+                      'Belum ada member yang bergabung.',
+                      style: GoogleFonts.poppins(
+                          fontSize: 14, color: Colors.grey.shade500),
+                    ),
+                  ),
+                )
+              : Column(
+                  children: List.generate(
+                    _members.length > 3 ? 3 : _members.length,
+                    (i) {
+                      final member = _members[i];
+                      final name =
+                          member['users']?['username'] ?? 'Tidak diketahui';
+                      final date = member['joined_at'] != null
+                          ? member['joined_at'].toString().substring(0, 10)
+                          : 'Tidak diketahui';
+                      final image =
+                          member['users']?['photo_url'] ?? 'assets/profil.png';
+                      final isBaru = i == 0; // member terbaru
+
+                      return Card(
+                        color: Colors.white,
+                        elevation: 2,
+                        margin: EdgeInsets.only(bottom: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            radius: 24,
+                            backgroundColor: Colors.grey.shade200,
+                            backgroundImage:
+                                (image.isEmpty || image == 'assets/profil.png')
+                                    ? AssetImage('assets/profil.png')
+                                    : (image.startsWith('http')
+                                        ? NetworkImage(image)
+                                        : AssetImage(image)) as ImageProvider,
+                          ),
+                          title: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  name,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.black,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (isBaru)
+                                Container(
+                                  margin: EdgeInsets.only(left: 6),
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.shade50,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    'Baru',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 10,
+                                      color: Colors.green.shade800,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          subtitle: Text(
+                            'Bergabung $date',
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
           SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
@@ -546,19 +839,15 @@ class MemberItem extends StatelessWidget {
   final String image;
 
   const MemberItem({
-    Key? key, // Pastikan Key? key ada di constructor
+    Key? key,
     required this.name,
     required this.date,
     required this.image,
-  }) : super(key: key); // Pastikan super(key: key) ada di constructor
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    // BARIS PRINT YANG ANDA MINTA, DITARUH DI SINI
-    print('MemberItem: Name: $name, Image Path/URL: $image');
-
     ImageProvider imageProvider;
-    // LOGIKA UNTUK MEMILIH ANTARA NetworkImage ATAU AssetImage
     if (image.startsWith('http://') || image.startsWith('https://')) {
       imageProvider = NetworkImage(image);
     } else {
@@ -568,10 +857,8 @@ class MemberItem extends StatelessWidget {
     return ListTile(
       leading: CircleAvatar(
         radius: 20,
-        // GUNAKAN imageProvider DI SINI
         backgroundImage: imageProvider,
-        backgroundColor: Colors.grey.shade200, // Warna latar belakang jika gambar tidak ada
-        // Optional: Tambahkan ikon placeholder jika URL kosong dan itu NetworkImage
+        backgroundColor: Colors.grey.shade200,
         child: imageProvider is NetworkImage && image.isEmpty
             ? const Icon(Icons.person, color: Colors.grey)
             : null,
