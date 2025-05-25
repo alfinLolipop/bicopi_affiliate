@@ -34,139 +34,34 @@ class _DetailMemberScreenState extends State<DetailMemberScreen> {
     super.initState();
     _initializeValues();
     _fetchRiwayatTransaksi();
-    _getCurrentAffiliateId(); // Dapatkan ID affiliate saat ini dan set up listener
+    _getCurrentAffiliateId();
   }
 
-  // Metode untuk mendapatkan ID affiliate yang sedang login
   Future<void> _getCurrentAffiliateId() async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user != null) {
       setState(() {
         _currentAffiliateId = user.id;
       });
-      _setupAffiliatePointLogListener(); // Set up listener setelah ID affiliate didapatkan
     } else {
       print('Tidak ada affiliate yang login.');
-      // Handle jika tidak ada user yang login, mungkin redirect ke halaman login
-      // Atau tampilkan pesan kesalahan di UI
     }
   }
 
-  // Metode untuk menyiapkan listener Realtime Supabase
   void _setupAffiliatePointLogListener() {
-  if (_currentAffiliateId == null) return;
+    // Tidak digunakan lagi
+  }
 
-  final stream = Supabase.instance.client
-      .from('affiliate_points_log')
-      .stream(primaryKey: ['id'])
-      .eq('affiliate_id', _currentAffiliateId!)
-      .order('created_at', ascending: false);
-
-  _affiliateLogSubscription = stream.listen((data) async {
-    for (var log in data) {
-      final logId = log['id'];
-      final int points = log['points_earned'] ?? 0;
-      final String? memberId = log['member_id'];
-      final String? orderId = log['order_id'];
-
-      // Skip jika data tidak valid
-      if (points <= 0 || memberId == null) continue;
-
-      // Cek apakah log sudah diproses sebelumnya (opsional: jika ada kolom 'processed')
-      final existing = await Supabase.instance.client
-          .from('member_points_log')
-          .select()
-          .eq('order_id', orderId as Object)
-          .eq('member_id', memberId)
-          .maybeSingle();
-
-      if (existing != null) {
-        print('Log $logId sudah pernah diproses.');
-        continue;
-      }
-
-      await _processAffiliatePoints(points, memberId, orderId);
-    }
-  }, onError: (e) {
-    print('❌ Error listening to affiliate_points_log: $e');
-  });
-}
-
-  // Metode untuk memproses poin dari affiliate
-  // Sekarang menerima memberIdToReceivePoints dan orderId dari log affiliate
   Future<void> _processAffiliatePoints(
       int totalPoinAffiliate, String memberIdToReceivePoints, String? orderId) async {
-    if (_currentAffiliateId == null) {
-      print('Affiliate ID tidak tersedia untuk memproses poin.');
-      return;
-    }
-
-    // --- BARU: Ambil presentase TERKINI dari tabel 'members' ---
-    int actualPercentage = 10; // Default fallback
-    try {
-      final memberData = await Supabase.instance.client
-          .from('members')
-          .select('presentase') // Hanya ambil 'presentase' karena itu yang digunakan untuk perhitungan
-          .eq('id', memberIdToReceivePoints)
-          .single();
-
-      if (memberData != null && memberData['presentase'] != null) {
-
-        actualPercentage = memberData['presentase'] as int;
-      } else {
-        print('Data presentase member tidak ditemukan atau tipe data salah untuk ID: $memberIdToReceivePoints, menggunakan nilai default.');
-      }
-    } catch (e) {
-      print('Gagal mengambil presentase member dari database: $e, menggunakan nilai default.');
-    }
-    // --- AKHIR DARI BAGIAN BARU ---
-
-    // Gunakan actualPercentage yang baru diambil dari database
-    int poinUntukMember = ((totalPoinAffiliate * actualPercentage) / 100).round();
-
-    print('✅ Affiliate mengirim poin!');
-    print('Affiliate mengirim: $totalPoinAffiliate poin');
-    print('Mengirim $actualPercentage% poin ke member: $poinUntukMember');
-
-    try {
-      // Masukkan poin ke member_points_log
-      await Supabase.instance.client.from('member_points_log').insert({
-        'member_id': memberIdToReceivePoints,
-        'points_earned': poinUntukMember,
-        'description': 'Menerima $poinUntukMember poin dari transaksi affiliate (Affiliate ID: $_currentAffiliateId)',
-        'created_at': DateTime.now().toUtc().toIso8601String(),
-        'order_id': orderId, // Masukkan order_id dari log affiliate
-      });
-
-      print('Poin berhasil dikirim ke member_points_log.');
-      // Refresh riwayat transaksi member setelah poin ditambahkan,
-      // tapi hanya jika member_id yang ditambahkan adalah member yang sedang dilihat di layar ini.
-      if (memberIdToReceivePoints == widget.data['id']) {
-         _fetchRiwayatTransaksi();
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Berhasil mengirim $poinUntukMember poin ke member!'),
-        ),
-      );
-    } catch (e) {
-      print('Gagal mengirim poin ke member_points_log: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Gagal mengirim poin ke member: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
+    // Tidak digunakan lagi
   }
 
   @override
-void dispose() {
-  _affiliateLogSubscription?.cancel(); // Stop listener realtime
-  super.dispose();
-}
-
+  void dispose() {
+    _affiliateLogSubscription?.cancel();
+    super.dispose();
+  }
 
   Future<void> _fetchRiwayatTransaksi() async {
     final memberId = widget.data['id'];
@@ -196,7 +91,7 @@ void dispose() {
 
   String _getNamaBulan(int bulan) {
     const bulanIndo = [
-      '', // index ke-0 tidak dipakai
+      '',
       'Januari',
       'Februari',
       'Maret',
@@ -215,28 +110,23 @@ void dispose() {
 
   void _initializeValues() {
     setState(() {
-      // Pastikan casting ke int, karena dari database mungkin datang sebagai int? atau dynamic
       kelipatan = widget.data['kelipatan'] as int? ?? 10;
       _selectedPercentage = widget.data['presentase'] as int? ?? kelipatan;
     });
   }
 
   Future<void> _updateKelipatanDanPersentase() async {
-    final id = widget.data['id']; // ID member yang sedang dilihat
+    final id = widget.data['id'];
     final now = DateTime.now().toUtc().toIso8601String();
 
     try {
-      // Tambahkan .select() untuk mendapatkan response dari operasi update
       final response = await Supabase.instance.client.from('members').update({
-        'kelipatan': kelipatan, // Nilai yang dipilih di dropdown UI
-        'presentase': _selectedPercentage, // Nilai yang dipilih di dropdown UI
+        'kelipatan': kelipatan,
+        'presentase': _selectedPercentage,
         'updated_at': now,
-      }).eq('id', id).select(); // Menambahkan .select() di sini
+      }).eq('id', id).select();
 
-      // Supabase postgrest-dart (client) tidak akan mengembalikan 'hasError' secara langsung
-      // jika terjadi kesalahan jaringan atau server, ia akan melempar exception.
-      // Jika response kosong atau tidak ada data yang diupdate, itu juga bisa menandakan masalah.
-      if (response.isEmpty) { // Cek apakah tidak ada data yang dikembalikan (artinya mungkin gagal update)
+      if (response.isEmpty) {
         print('Gagal update data: Response kosong');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -245,7 +135,6 @@ void dispose() {
           ),
         );
       } else {
-        // Jika response tidak kosong, anggap berhasil
         print('Kelipatan dan presentase berhasil diupdate di database.');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -254,7 +143,6 @@ void dispose() {
         );
       }
     } catch (e) {
-      // Tangkap exception jika ada error dari Supabase client
       print('Gagal update data: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -275,21 +163,22 @@ void dispose() {
     final photoUrl = user['photo_url'] ?? '';
 
     ImageProvider profileImageProvider;
-    if (photoUrl.isNotEmpty &&
-        (photoUrl.startsWith('http://') || photoUrl.startsWith('https://'))) {
+    if (photoUrl.isEmpty || photoUrl == 'assets/icons/avatar.png') {
+      profileImageProvider = AssetImage('assets/profil.png');
+    } else if (photoUrl.startsWith('http')) {
       profileImageProvider = NetworkImage(photoUrl);
     } else {
-      profileImageProvider = const AssetImage('assets/icons/avatar.png');
+      profileImageProvider = AssetImage(photoUrl);
     }
 
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 245, 245, 245),
+      backgroundColor: const Color(0xFFF3F4F8),
       appBar: AppBar(
         title: Text(
           "Detail Member",
           style: GoogleFonts.poppins(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
             color: Colors.black87,
           ),
         ),
@@ -311,52 +200,89 @@ void dispose() {
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(18.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildProfileCard(name, email, status, phone, profileImageProvider),
-            const SizedBox(height: 16),
-            _buildPointSection(), // Bagian untuk mengatur kelipatan dan presentase member
-            const SizedBox(height: 16),
-            const Text(
-              'Riwayat Transaksi',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            const SizedBox(height: 20),
+            _buildPointSection(),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.07),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Riwayat Transaksi',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Color(0xFF222B45)),
+                  ),
+                  const SizedBox(height: 8),
+                  _isLoadingRiwayat
+                      ? const Center(child: CircularProgressIndicator())
+                      : _riwayatTransaksi.isEmpty
+                          ? Container(
+                              height: 120,
+                              alignment: Alignment.center,
+                              child: const Text(
+                                'Belum ada transaksi.',
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            )
+                          : ListView.separated(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: _riwayatTransaksi.length,
+                              separatorBuilder: (_, __) =>
+                                  const Divider(height: 18, color: Color(0xFFF3F4F8)),
+                              itemBuilder: (context, idx) {
+                                final log = _riwayatTransaksi[idx];
+                                final dateTime = DateTime.parse(log['created_at']);
+                                final tanggal =
+                                    '${dateTime.day} ${_getNamaBulan(dateTime.month)} ${dateTime.year}';
+                                final poin = log['points_earned'] ?? 0;
+                                final description = log['description'] as String? ?? 'Transaksi';
+
+                                Color statusColor = Colors.grey;
+                                String statusText = 'Unknown';
+
+                                if (description.contains('Menerima') &&
+                                    description.contains('affiliate')) {
+                                  statusColor = Colors.green;
+                                  statusText = 'Diterima dari Affiliate';
+                                } else if (description.contains('Dikirim')) {
+                                  statusColor = Colors.blue;
+                                  statusText = 'Dikirim';
+                                }
+
+                                return _buildTransactionItem(
+                                  tanggal,
+                                  '$poin poin',
+                                  statusText,
+                                  statusColor,
+                                );
+                              },
+                            ),
+                ],
+              ),
             ),
-            const SizedBox(height: 8),
-            _isLoadingRiwayat
-                ? const Center(child: CircularProgressIndicator())
-                : _riwayatTransaksi.isEmpty
-                    ? const Text('Belum ada transaksi.')
-                    : Column(
-                        children: _riwayatTransaksi.map((log) {
-                          final dateTime = DateTime.parse(log['created_at']);
-                          final tanggal =
-                              '${dateTime.day} ${_getNamaBulan(dateTime.month)} ${dateTime.year}';
-                          final poin = log['points_earned'] ?? 0;
-                          final description = log['description'] as String? ?? 'Transaksi';
-
-                          Color statusColor = Colors.grey;
-                          String statusText = 'Unknown';
-
-                          // Sesuaikan status berdasarkan deskripsi
-                          if (description.contains('Menerima') && description.contains('affiliate')) {
-                            statusColor = Colors.green;
-                            statusText = 'Diterima dari Affiliate';
-                          } else if (description.contains('Dikirim')) {
-                            statusColor = Colors.blue;
-                            statusText = 'Dikirim';
-                          }
-                          // Tambahkan kondisi lain jika ada tipe log lain
-
-                          return _buildTransactionItem(
-                            tanggal,
-                            '$poin poin',
-                            statusText,
-                            statusColor,
-                          );
-                        }).toList(),
-                      ),
             const SizedBox(height: 32),
           ],
         ),
@@ -364,65 +290,95 @@ void dispose() {
     );
   }
 
-  // Bagian Widget yang tidak berubah
   Widget _buildProfileCard(String name, String email, String status, String phone,
       ImageProvider imageProvider) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         children: [
           Row(
             children: [
-              CircleAvatar(
-                radius: 30,
-                backgroundImage: imageProvider,
-                backgroundColor: Colors.grey.shade200,
+              Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.green.withOpacity(0.18),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: CircleAvatar(
+                  radius: 34,
+                  backgroundImage: imageProvider,
+                  backgroundColor: Colors.grey.shade200,
+                ),
               ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name,
+              const SizedBox(width: 18),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: GoogleFonts.poppins(
+                        fontSize: 19,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF222B45),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.green[50],
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Text(
+                        status,
+                        style: const TextStyle(
+                            color: Colors.green, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              const Icon(Icons.email, size: 18, color: Colors.grey),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(email,
                     style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.green[100],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      status,
-                      style: const TextStyle(
-                          color: Colors.green, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
+                        color: Color(0xFF555B6A), fontWeight: FontWeight.w500)),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 6),
           Row(
             children: [
-              const Icon(Icons.email, size: 16),
+              const Icon(Icons.phone, size: 18, color: Colors.grey),
               const SizedBox(width: 8),
-              Text(email),
-            ],
-          ),
-          Row(
-            children: [
-              const Icon(Icons.phone, size: 16),
-              const SizedBox(width: 8),
-              Text(phone),
+              Expanded(
+                child: Text(phone,
+                    style: const TextStyle(
+                        color: Color(0xFF555B6A), fontWeight: FontWeight.w500)),
+              ),
             ],
           ),
         ],
@@ -432,27 +388,35 @@ void dispose() {
 
   Widget _buildPointSection() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.07),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
             'Pengaturan Point Member',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF222B45)),
           ),
-          const SizedBox(height: 12),
-
-          // Kelipatan
+          const SizedBox(height: 14),
           Row(
             children: [
-              const Text("Kelipatan: "),
+              const Text("Kelipatan: ",
+                  style: TextStyle(fontWeight: FontWeight.w500)),
               const SizedBox(width: 8),
               DropdownButton<int>(
                 value: kelipatan,
+                borderRadius: BorderRadius.circular(10),
+                style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF222B45)),
                 items: [5, 10, 20, 25].map((k) {
                   return DropdownMenuItem(
                     value: k,
@@ -463,27 +427,26 @@ void dispose() {
                   if (val != null) {
                     setState(() {
                       kelipatan = val;
-                      _selectedPercentage = val; // reset persentase
+                      _selectedPercentage = val;
                     });
-                    _updateKelipatanDanPersentase(); // Update ke database
+                    _updateKelipatanDanPersentase();
                   }
                 },
               ),
             ],
           ),
-
-          const SizedBox(height: 12),
-
-          // Persentase
+          const SizedBox(height: 14),
           DropdownButtonFormField<int>(
             value: _selectedPercentage,
             decoration: InputDecoration(
               labelText: 'Pilih Presentase',
+              labelStyle: const TextStyle(fontWeight: FontWeight.w500),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(10),
               ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             ),
+            style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF222B45)),
             items: _percentages.map((percent) {
               return DropdownMenuItem(
                 value: percent,
@@ -495,7 +458,7 @@ void dispose() {
                 setState(() {
                   _selectedPercentage = value;
                 });
-                _updateKelipatanDanPersentase(); // Update ke database
+                _updateKelipatanDanPersentase();
               }
             },
           ),
@@ -506,28 +469,82 @@ void dispose() {
 
   Widget _buildTransactionItem(
       String date, String amount, String status, Color statusColor) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(date, style: const TextStyle(color: Colors.grey)),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(status,
-                    style: TextStyle(
-                        color: statusColor, fontWeight: FontWeight.bold)),
-              ),
-            ],
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
-          Text(amount, style: const TextStyle(fontWeight: FontWeight.bold)),
+        ],
+        border: Border.all(
+          color: statusColor.withOpacity(0.15),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: statusColor.withOpacity(0.13),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              status == 'Diterima dari Affiliate'
+                  ? Icons.arrow_downward_rounded
+                  : Icons.arrow_upward_rounded,
+              color: statusColor,
+              size: 26,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  date,
+                  style: const TextStyle(
+                    color: Color(0xFF8F9BB3),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  status,
+                  style: TextStyle(
+                    color: statusColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: statusColor.withOpacity(0.09),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              amount,
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+                color: statusColor,
+              ),
+            ),
+          ),
         ],
       ),
     );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 
 import 'home.dart';
 import 'popup.dart';
@@ -17,13 +18,17 @@ class PointsScreen extends StatefulWidget {
 class _PointsScreen extends State<PointsScreen> {
   int _currentIndex = 1;
   int? currentPoints;
+  String? _currentAffiliateId;
   List<Map<String, dynamic>> rewards = [];
   bool isLoading = true;
+  final Uuid _uuid = const Uuid();
 
   @override
   void initState() {
     super.initState();
-    fetchAllData();
+    _fetchAffiliateId().then((_) {
+      fetchAllData();
+    });
   }
 
   Future<void> fetchAllData() async {
@@ -32,6 +37,59 @@ class _PointsScreen extends State<PointsScreen> {
     setState(() {
       isLoading = false;
     });
+  }
+
+  Future<void> _fetchAffiliateId() async {
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) {
+        setState(() {
+          _currentAffiliateId = null;
+        });
+        return;
+      }
+
+      final response = await Supabase.instance.client
+          .from('affiliates')
+          .select('id')
+          .eq('id_user', user.id)
+          .maybeSingle();
+
+      setState(() {
+        if (response != null && response['id'] != null) {
+          _currentAffiliateId = response['id'] as String;
+        } else {
+          _currentAffiliateId = null;
+          _createAffiliateEntry(user.id);
+        }
+      });
+    } catch (e) {
+      setState(() {
+        _currentAffiliateId = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching affiliate ID: $e')),
+      );
+    }
+  }
+
+  Future<void> _createAffiliateEntry(String userId) async {
+    try {
+      final newAffiliateId = _uuid.v4();
+      await Supabase.instance.client.from('affiliates').insert({
+        'id': newAffiliateId,
+        'id_user': userId,
+        'total_points': 0,
+      });
+      setState(() {
+        _currentAffiliateId = newAffiliateId;
+        currentPoints = 0;
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error creating affiliate entry: $e')),
+      );
+    }
   }
 
   Future<void> fetchPointsFromSupabase() async {
@@ -49,9 +107,18 @@ class _PointsScreen extends State<PointsScreen> {
         setState(() {
           currentPoints = response['total_points'];
         });
+      } else {
+        setState(() {
+          currentPoints = 0;
+        });
+        if (_currentAffiliateId == null) {
+          _createAffiliateEntry(user.id);
+        }
       }
     } catch (e) {
-      print('Error fetching points: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching points: $e')),
+      );
     }
   }
 
@@ -60,8 +127,6 @@ class _PointsScreen extends State<PointsScreen> {
       final response = await Supabase.instance.client
           .from('klaim_rewards')
           .select();
-
-      print('Response klaim_rewards: $response');
 
       setState(() {
         rewards = List<Map<String, dynamic>>.from(response).map((r) {
@@ -73,7 +138,9 @@ class _PointsScreen extends State<PointsScreen> {
         }).toList();
       });
     } catch (e) {
-      print('Error fetching rewards: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching rewards: $e')),
+      );
     }
   }
 
@@ -81,12 +148,19 @@ class _PointsScreen extends State<PointsScreen> {
     setState(() {
       _currentIndex = index;
     });
+    if (index == 0) {
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HomeScreen()));
+    } else if (index == 2) {
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const NotificationScreen()));
+    } else if (index == 3) {
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const ProfileScreen()));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.white, // BG full putih
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
@@ -95,21 +169,22 @@ class _PointsScreen extends State<PointsScreen> {
           'Points',
           style: GoogleFonts.poppins(
             fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Colors.black,
+            fontWeight: FontWeight.bold,
+            color: Colors.grey[800],
+            letterSpacing: 1,
           ),
         ),
         centerTitle: true,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(2.0),
           child: Container(
-            color: Colors.green,
+            color: Colors.green, // Garis hijau seperti di home
             height: 2.0,
           ),
         ),
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: Colors.grey))
           : Column(
               children: [
                 Container(
@@ -120,27 +195,45 @@ class _PointsScreen extends State<PointsScreen> {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
-                      BoxShadow(color: Colors.black12, blurRadius: 6, spreadRadius: 1),
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.13),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
                     ],
+                    border: Border.all(color: Colors.grey[200]!),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         "Point Saat Ini",
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey[700],
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         currentPoints != null ? "$currentPoints" : "0",
-                        style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.green),
+                        style: GoogleFonts.poppins(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
+                        ),
                       ),
                     ],
                   ),
                 ),
                 Expanded(
                   child: rewards.isEmpty
-                      ? const Center(child: Text("Tidak ada reward tersedia"))
+                      ? Center(
+                          child: Text(
+                            "Tidak ada reward tersedia",
+                            style: GoogleFonts.poppins(color: Colors.grey[600]),
+                          ),
+                        )
                       : ListView.builder(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           itemCount: rewards.length,
@@ -157,37 +250,36 @@ class _PointsScreen extends State<PointsScreen> {
                 ),
               ],
             ),
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: Colors.white,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.green,
-        unselectedItemColor: Colors.grey,
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          if (index != _currentIndex) {
-            Widget nextScreen;
-            if (index == 0) {
-              nextScreen = const HomeScreen();
-            } else if (index == 2) {
-              nextScreen = const NotificationScreen();
-            } else if (index == 3) {
-              nextScreen = const ProfileScreen();
-            } else {
-              return;
-            }
-
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => nextScreen),
-            );
-          }
-        },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.star), label: 'Points'),
-          BottomNavigationBarItem(icon: Icon(Icons.notifications), label: 'Notifikasi'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-        ],
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: Colors.grey[300]!, width: 1)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.07),
+              blurRadius: 8,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          backgroundColor: Colors.white,
+          type: BottomNavigationBarType.fixed,
+          selectedItemColor: Colors.green,
+          unselectedItemColor: Colors.grey[400],
+          currentIndex: _currentIndex,
+          elevation: 0,
+          showUnselectedLabels: true,
+          selectedLabelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+          unselectedLabelStyle: GoogleFonts.poppins(),
+          onTap: _onTabTapped,
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+            BottomNavigationBarItem(icon: Icon(Icons.star), label: 'Points'),
+            BottomNavigationBarItem(icon: Icon(Icons.notifications), label: 'Notifikasi'),
+            BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+          ],
+        ),
       ),
     );
   }
@@ -198,17 +290,24 @@ class _PointsScreen extends State<PointsScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.13),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
         ],
+        border: Border.all(color: Colors.grey[200]!),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          Text(title,
+              style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey[800])),
           const SizedBox(height: 4),
-          Text(description, style: const TextStyle(color: Colors.black54)),
+          Text(description,
+              style: GoogleFonts.poppins(color: Colors.grey[600], fontSize: 13.5)),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -216,20 +315,24 @@ class _PointsScreen extends State<PointsScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
+                  color: Colors.grey.shade200,
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Text("$points Points", style: const TextStyle(fontWeight: FontWeight.bold)),
+                child: Text("$points Points",
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Colors.grey[800])),
               ),
               ElevatedButton(
                 onPressed: currentPoints != null && currentPoints! >= points
-                    ? () => showRedeemDialog(context, title, points)
+                    ? () => showRedeemDialog(context, title, points, description)
                     : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  elevation: 0,
                 ),
-                child: const Text("Klaim reward", style: TextStyle(color: Colors.white)),
+                child: Text("Klaim reward",
+                    style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600)),
               ),
             ],
           ),
@@ -238,7 +341,7 @@ class _PointsScreen extends State<PointsScreen> {
     );
   }
 
-  void showRedeemDialog(BuildContext context, String title, int points) {
+  void showRedeemDialog(BuildContext context, String title, int points, String description) {
     if (currentPoints! < points) {
       showDialog(
         context: context,
@@ -272,35 +375,45 @@ class _PointsScreen extends State<PointsScreen> {
             TextButton(
               onPressed: () async {
                 Navigator.pop(context);
+
                 final user = Supabase.instance.client.auth.currentUser;
 
-                if (user != null) {
-                  int updatedPoints = currentPoints! - points;
-                  try {
-                    // Update ke Supabase
-                    await Supabase.instance.client
-                        .from('affiliates')
-                        .update({'total_points': updatedPoints})
-                        .eq('id_user', user.id);
+                if (user == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Anda harus login untuk menukar reward.')),
+                  );
+                  return;
+                }
 
-                    setState(() {
-                      currentPoints = updatedPoints;
-                    });
-                  } catch (e) {
-                    print('Error updating points: $e');
-                    // Tambahkan notifikasi error kalau mau
-                  }
+                if (_currentAffiliateId == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Error: ID afiliasi tidak ditemukan. Coba restart aplikasi atau login ulang.')),
+                  );
+                  return;
+                }
 
-                  String transactionId = generateUniqueId();
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => PopupPage(
-                        title: title,
-                        points: points,
-                        transactionId: transactionId,
-                      ),
-                    ),
+                String transactionId = _uuid.v4();
+                String affiliateIdToSend = _currentAffiliateId!;
+
+                final bool? redemptionSuccessful = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => PopupPage(
+                    title: title,
+                    points: points,
+                    transactionId: transactionId,
+                    affiliateId: affiliateIdToSend,
+                    description: description,
+                  ),
+                );
+
+                if (redemptionSuccessful == true) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Penukaran berhasil dicatat!')),
+                  );
+                  await fetchPointsFromSupabase();
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Pencatatan penukaran gagal atau dibatalkan.')),
                   );
                 }
               },
@@ -310,9 +423,5 @@ class _PointsScreen extends State<PointsScreen> {
         );
       },
     );
-  }
-
-  String generateUniqueId() {
-    return DateTime.now().millisecondsSinceEpoch.toString();
   }
 }
