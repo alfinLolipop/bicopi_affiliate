@@ -1,0 +1,2 @@
+C:/Users/M. Dimas/bicopi_affiliate/android/app/.cxx/Debug/575m5e29/x86_64/CMakeFiles/edit_cache.dir
+C:/Users/M. Dimas/bicopi_affiliate/android/app/.cxx/Debug/575m5e29/x86_64/CMakeFiles/rebuild_cache.dir
